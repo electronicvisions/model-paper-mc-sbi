@@ -9,7 +9,8 @@ EXPERIMENT_NAME: str = "paper_sbi"
 
 def depends(ctx):
     ctx("pynn-brainscales")
-    ctx("libnux")
+    ctx("calix")
+    ctx("model-hw-mc-genetic")
     ctx("code-format")
 
 
@@ -22,7 +23,6 @@ def configure(conf):
     conf.load("test_base")
     conf.load("pytest")
 
-    conf.load("compiler_cxx")
     conf.load("python")
 
 
@@ -37,7 +37,9 @@ def build(bld):
         install_from="src/py",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        use=["pynn_brainscales2"])
+        use=["pynn_brainscales2", "model_hw_mc_genetic-python_libraries",
+		     "calix_pylib"],
+        test_timeout=120)
 
     bld(name=f"{EXPERIMENT_NAME}-python_scripts",
         features="py use pylint pycodestyle",
@@ -48,23 +50,27 @@ def build(bld):
         chmod=Utils.O755,
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        use=["pynn_brainscales2", f"{EXPERIMENT_NAME}-python_libraries"])
+        use=["model_hw_mc_genetic-python_libraries", "pynn_brainscales2",
+		     f"{EXPERIMENT_NAME}-python_libraries", "calix_pylib"],
+        test_timeout=120)
 
     bld(name=f"{EXPERIMENT_NAME}-python_hwtests",
         tests=bld.path.ant_glob("tests/hw/py/**/*.py"),
         features="use pytest pylint pycodestyle",
-        use=f"{EXPERIMENT_NAME}-python_libraries",
+        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_genetic-python_libraries"],
         install_path="${PREFIX}/bin/tests/hw",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        skip_run=not bld.env.DLSvx_HARDWARE_AVAILABLE)
+        skip_run=not bld.env.DLSvx_HARDWARE_AVAILABLE,
+        test_timeout=120)
 
     bld(name=f"{EXPERIMENT_NAME}-python_swtests",
         tests=bld.path.ant_glob("tests/sw/py/**/*.py"),
         features="use pytest pylint pycodestyle",
-        use=f"{EXPERIMENT_NAME}-python_libraries",
+        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_genetic-python_libraries"],
         install_path="${PREFIX}/bin/tests/sw",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
-        pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"))
+        pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
+        test_timeout=160)
 
     bld.add_post_fun(summary)
