@@ -1,28 +1,27 @@
 #!/usr/bin/env python
-
 import unittest
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from model_hw_mc_genetic.abc import Algorithm
 from model_hw_mc_genetic.attenuation import Observation
 from model_hw_mc_genetic.attenuation.helper import get_experiment
-
 from model_hw_mc_genetic.scripts.attenuation_record_variations_arbor import \
     main as record_variations
-from model_hw_mc_genetic.scripts.abc_draw_posterior_samples import draw_samples
-from model_hw_mc_genetic.scripts.plot_abc_pairplot import plot_pairplot
-from model_hw_mc_genetic.scripts.plot_attenuation_pairplot_and_trace import \
-    plot_pairplot_and_trace, plot_trace_attenuation
-from model_hw_mc_genetic.scripts.plot_abc_marginals import main as \
-    plot_abc_marginals
-from model_hw_mc_genetic.scripts.plot_abc_marginals_obs import main as \
-    plot_marginals_obs
 
 from paper_sbi.scripts.attenuation_abc import main as abc
 from paper_sbi.scripts.attenuation_abc_add_observables import add_observables
+from paper_sbi.scripts.plot_attenuation_pairplot_and_trace import \
+    plot_pairplot_and_trace, plot_trace_attenuation
+from paper_sbi.scripts.plot_abc_marginals_obs import main as \
+    plot_marginals_obs
+
+from paramopt.abc import Algorithm
+from paramopt.scripts.abc_draw_posterior_samples import draw_samples
+from paramopt.scripts.plot_abc_pairplot import plot_pairplot
+from paramopt.scripts.plot_abc_marginals import main as \
+    plot_abc_marginals
 
 
 class TestAlgorithms(unittest.TestCase):

@@ -10,6 +10,7 @@ EXPERIMENT_NAME: str = "paper_sbi"
 def depends(ctx):
     ctx("pynn-brainscales")
     ctx("calix")
+    ctx("paramopt")
     ctx("model-hw-mc-genetic")
     ctx("code-format")
 
@@ -38,7 +39,7 @@ def build(bld):
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
         use=["pynn_brainscales2", "model_hw_mc_genetic-python_libraries",
-		     "calix_pylib"],
+		     "calix_pylib", "paramopt-pylib"],
         test_timeout=120)
 
     bld(name=f"{EXPERIMENT_NAME}-python_scripts",
@@ -51,7 +52,8 @@ def build(bld):
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
         use=["model_hw_mc_genetic-python_libraries", "pynn_brainscales2",
-		     f"{EXPERIMENT_NAME}-python_libraries", "calix_pylib"],
+		     f"{EXPERIMENT_NAME}-python_libraries", "calix_pylib",
+			 "paramopt-pylib"],
         test_timeout=120)
 
     bld(name=f"{EXPERIMENT_NAME}-python_hwtests",
@@ -71,6 +73,6 @@ def build(bld):
         install_path="${PREFIX}/bin/tests/sw",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        test_timeout=160)
+        test_timeout=180)
 
     bld.add_post_fun(summary)

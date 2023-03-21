@@ -10,13 +10,13 @@ from sbi.utils import posterior_nn
 
 
 from model_hw_mc_genetic.helper import get_license_and_chip
-
-from model_hw_mc_genetic.abc import Algorithm, perform_sequential_estimation, \
-    perform_mcabc
 from model_hw_mc_genetic.attenuation import Observation, fit_length_constant
 from model_hw_mc_genetic.attenuation.base import Base as AttenuationExperiment
 from model_hw_mc_genetic.attenuation.helper import extract_observation, \
     get_experiment, get_bounds
+
+from paramopt.abc import Algorithm, perform_sequential_estimation, \
+    perform_mcabc
 
 
 def get_evaluation_function(experiment: AttenuationExperiment,
