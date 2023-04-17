@@ -7,7 +7,7 @@ from pynn_brainscales.brainscales2.helper import nightly_calib_path
 
 from dlens_vx_v3 import sta, hxcomm, halco, hal
 
-from model_hw_mc_genetic.helper import conductance_to_capmem
+from model_hw_mc_attenuation.helper import conductance_to_capmem
 
 from calix.common import base
 from calix.hagen import neuron_helpers

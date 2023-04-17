@@ -5,10 +5,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from model_hw_mc_genetic.attenuation import Observation
-from model_hw_mc_genetic.attenuation.helper import get_experiment
-from model_hw_mc_genetic.scripts.attenuation_record_variations_arbor import \
-    main as record_variations
+from model_hw_mc_attenuation import Observation
+from model_hw_mc_attenuation.extract import get_experiment
+from model_hw_mc_attenuation.scripts.record_variations_arbor import main as \
+    record_variations
 
 from paper_sbi.scripts.attenuation_abc import main as abc
 from paper_sbi.scripts.attenuation_abc_add_observables import add_observables

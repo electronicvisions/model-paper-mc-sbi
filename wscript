@@ -11,7 +11,7 @@ def depends(ctx):
     ctx("pynn-brainscales")
     ctx("calix")
     ctx("paramopt")
-    ctx("model-hw-mc-genetic")
+    ctx("model-hw-mc-attenuation")
     ctx("code-format")
 
 
@@ -38,7 +38,7 @@ def build(bld):
         install_from="src/py",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        use=["pynn_brainscales2", "model_hw_mc_genetic-python_libraries",
+        use=["pynn_brainscales2", "model_hw_mc_attenuation-python_libraries",
 		     "calix_pylib", "paramopt-pylib"],
         test_timeout=120)
 
@@ -51,7 +51,7 @@ def build(bld):
         chmod=Utils.O755,
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
-        use=["model_hw_mc_genetic-python_libraries", "pynn_brainscales2",
+        use=["model_hw_mc_attenuation-python_libraries", "pynn_brainscales2",
 		     f"{EXPERIMENT_NAME}-python_libraries", "calix_pylib",
 			 "paramopt-pylib"],
         test_timeout=120)
@@ -59,7 +59,7 @@ def build(bld):
     bld(name=f"{EXPERIMENT_NAME}-python_hwtests",
         tests=bld.path.ant_glob("tests/hw/py/**/*.py"),
         features="use pytest pylint pycodestyle",
-        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_genetic-python_libraries"],
+        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_attenuation-python_libraries"],
         install_path="${PREFIX}/bin/tests/hw",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),
@@ -69,7 +69,7 @@ def build(bld):
     bld(name=f"{EXPERIMENT_NAME}-python_swtests",
         tests=bld.path.ant_glob("tests/sw/py/**/*.py"),
         features="use pytest pylint pycodestyle",
-        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_genetic-python_libraries"],
+        use=[f"{EXPERIMENT_NAME}-python_libraries", "model_hw_mc_attenuation-python_libraries"],
         install_path="${PREFIX}/bin/tests/sw",
         pylint_config=join(get_toplevel_path(), "code-format", "pylintrc"),
         pycodestyle_config=join(get_toplevel_path(), "code-format", "pycodestyle"),

@@ -4,9 +4,9 @@ import unittest
 
 import numpy as np
 
-from model_hw_mc_genetic.attenuation import Observation
-from model_hw_mc_genetic.scripts.attenuation_record_variations import \
-    main as record_variations
+from model_hw_mc_attenuation import Observation
+from model_hw_mc_attenuation.scripts.record_variations import main as \
+    record_variations
 
 from paper_sbi.scripts.attenuation_abc import main as abc
 

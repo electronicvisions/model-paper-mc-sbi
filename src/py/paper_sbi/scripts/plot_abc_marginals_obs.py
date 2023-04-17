@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from model_hw_mc_genetic.attenuation import Observation
-from model_hw_mc_genetic.attenuation.helper import extract_observation
+from model_hw_mc_attenuation import Observation
+from model_hw_mc_attenuation.extract import extract_observation
 
 from paramopt.plotting.density import plot_1d_density
 from paramopt.helper import get_identical_attr

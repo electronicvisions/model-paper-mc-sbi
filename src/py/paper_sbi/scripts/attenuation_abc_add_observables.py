@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from model_hw_mc_genetic.attenuation.helper import get_experiment
+from model_hw_mc_attenuation.extract import get_experiment
 
 
 def add_observables(posterior_samples: pd.DataFrame,

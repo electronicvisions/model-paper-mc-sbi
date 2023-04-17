@@ -10,8 +10,8 @@ from pynn_brainscales.brainscales2.helper import nightly_calib_path
 
 from dlens_vx_v3 import sta, hal, halco
 
-from model_hw_mc_genetic.helper import get_license_and_chip
-from model_hw_mc_genetic.attenuation.bss import default_conductance_limits
+from model_hw_mc_attenuation.helper import get_license_and_chip
+from model_hw_mc_attenuation.bss import default_conductance_limits
 
 from paper_sbi.helper import measure_time_constants, get_calibration_dumper, \
     extract_neuron_configs
