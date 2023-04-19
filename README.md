@@ -23,11 +23,11 @@ We will restrict the parameter space to two dimension and look at the decay cons
 Furthermore, we will perform three approximation rounds with 50 simulations in each round.
 In contrast to the publication, we use the default neural density estimator in the current example.
 
-As stated in [How to build](build-and-runtime-dependencies), all runtime dependencies are encapsulated in a [Singularity Container](https://sylabs.io/docs/).
+As stated in [How to build](#build-and-runtime-dependencies), all runtime dependencies are encapsulated in a [Singularity Container](https://sylabs.io/docs/).
 All commands in the following list have to be executed in the appropriate singularity container (`singularity exec --app dls /containers/stable/latest ...`).
 When you want to perform experiments on BrainScaleS-2 you have to allocate hardware resources (`srun -p cube --wafer XX --fpga-without-fpga X ...`)
 
-1. Build/install the software as described in [How to build](how-to-build).
+1. Build/install the software as described in [How to build](#how-to-build).
 1. Record a target:
     - execute `record_variations.py` (`record_variations_arbor.py` for arbor); these scripts are part of the repository `model-hw-mc-attenuation`,
     - the file `attenuation_variations.pkl` contains the experiment results.
