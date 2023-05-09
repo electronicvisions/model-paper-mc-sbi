@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import partial
 import unittest
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from model_hw_mc_attenuation.scripts.record_variations_arbor import main as \
 from paper_sbi.scripts.attenuation_abc import main as abc
 from paper_sbi.scripts.attenuation_abc_add_observables import add_observables
 from paper_sbi.scripts.plot_attenuation_pairplot_and_trace import \
-    plot_pairplot_and_trace, plot_trace_attenuation
+    plot_pairplot_and_trace, plot_trace_attenuation, get_random_samples
 from paper_sbi.scripts.plot_abc_marginals_obs import main as \
     plot_marginals_obs
 
@@ -150,13 +151,13 @@ class TestEvaluation(unittest.TestCase):
     # pylint: disable=invalid-name
     def test_01_plot_pairplot_and_trace(self):
         attenuation_exp = get_experiment(self.target_df)
-        params = self.target_df.attrs['parameters']
+        parameters = get_random_samples(self.posterior_samples, 9)
 
+        plotting_func = partial(plot_trace_attenuation,
+                                recording_function=attenuation_exp.record_data)
         figure = plot_pairplot_and_trace(self.posterior_samples,
-                                         attenuation_exp,
-                                         plot_trace_attenuation,
-                                         original_parameters=params,
-                                         n_samples=8)
+                                         parameters,
+                                         plotting_func)
         figure.savefig(
             self.results_folder.joinpath('test_pairplot_and_traces.png'))
 

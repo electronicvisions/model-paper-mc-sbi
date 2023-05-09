@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Sequence
+from functools import partial
 import math
 import matplotlib.pyplot as plt
-from matplotlib.offsetbox import AnchoredText
 import pandas as pd
-import neo
 import quantities as pq
+import neo
 import numpy as np
 
-from model_hw_mc_attenuation import AttenuationExperiment
 from model_hw_mc_attenuation.extract import get_experiment
 
 from paramopt.plotting.density import plot_2d_enumerate, plot_1d_empty, \
@@ -16,45 +15,64 @@ from paramopt.plotting.density import plot_2d_enumerate, plot_1d_empty, \
 from paramopt.plotting.pairplot import pairplot, create_axes_grid
 
 
-def plot_trace_attenuation(ax: plt.Axes, block: neo.Block, step_size: int = 6,
-                           **kwargs) -> None:
+def plot_trace_attenuation(
+        subplot: plt.SubplotSpec, parameters: np.ndarray,
+        recording_function: Callable,
+        prev_axs: Optional[Sequence[plt.Axes]] = None,
+        step_size: int = 6, **kwargs) -> List[plt.Axes]:
     '''
     Plot the membrane traces of different compartments.
 
     Keyword arguments are passed to :meth:`plt.Axes.plot`.
 
-    :param ax: Axis in which to plot the membrane traces.
-    :param block: :class:`neo.Block` with the recorded membrane traces saved
-        as :class:`neo.IrregularlySampledSignal`.
+    :param subplot: SubplotSpec in which the data will be plotted.
+    :param parameters: Parameters for which to plot the observation.
+    :param recording_function: Function which takes parameters as an input and
+        returns an observation.
+    :param prev_axs: Axes previously created by calls to this function. These
+        axes can be used to share x and y scales.
+        returns an observation.
     :param step_size: Do not plot every recorded sample but only every
         step_size one.
+    :returns: List of created axes.
     '''
+    prev_ax = None if prev_axs is None else prev_axs[0]
+
+    block = recording_function(parameters)
+    ax = subplot.get_gridspec().figure.add_subplot(subplot, sharex=prev_ax,
+                                                   sharey=prev_ax)
+
     spike_times = block.annotations['spike_times']
     isi = np.diff(spike_times).mean()
 
     t_start = spike_times[0] - isi / 20
     t_stop = spike_times[0] + isi / 3
 
-    for signal in block.segments[-1].irregularlysampledsignals:
+    def cut_and_norm_signal(signal: neo.IrregularlySampledSignal,
+                            ) -> neo.IrregularlySampledSignal:
         cut_sig = signal.time_slice(t_start, t_stop)
-        time = (cut_sig.times - t_start.rescale(pq.ms)) \
-            * 1000
-        norm_voltage = cut_sig - np.mean(cut_sig.magnitude[:100])
-        ax.plot(time[::step_size], norm_voltage[::step_size],
+        cut_sig.time_shift(-cut_sig.t_start)
+        return cut_sig - np.mean(cut_sig.magnitude[:100])
+
+    for signal in block.segments[-1].irregularlysampledsignals:
+        signal = cut_and_norm_signal(signal)
+        ax.plot(signal.times.rescale(pq.us)[::step_size],
+                signal[::step_size],
                 label=signal.annotations['compartment'],
                 **kwargs)
+    return [ax]
 
 
 def plot_posterior_and_enumerate(subplot: plt.SubplotSpec,
                                  posterior_samples_df: pd.DataFrame,
-                                 enumerate_samples: np.ndarray) -> None:
+                                 samples: np.ndarray) -> None:
     '''
     Create pairplots of the posterior samples and mark the given samples.
 
     :param subplot: Space in which to create the axes for the pairplots of the
         posterior samples.
     :param posterior_samples: DataFrame with samples drawn from the posterior.
-    :param enumerate_samples: Array with the parameters of the samples to
+    :param samples: Array with the parameters of the samples to
         enumerate.
     '''
 
@@ -64,103 +82,88 @@ def plot_posterior_and_enumerate(subplot: plt.SubplotSpec,
     pairplot(axes, posterior_samples_df['parameters'].values,
              labels=posterior_samples_df['parameters'].columns,
              plot_2d_dist=plot_2d_hist,
-             limits=posterior_samples_df.attrs['limits'],
-             kwargs_2d={'cmap': plt.cm.get_cmap('Greys')})
+             limits=posterior_samples_df.attrs['limits'])
 
-    pairplot(axes, enumerate_samples, plot_1d_dist=plot_1d_empty,
-             plot_2d_dist=plot_2d_enumerate)
+    pairplot(axes, samples, plot_1d_dist=plot_1d_empty,
+             plot_2d_dist=plot_2d_enumerate,
+             limits=posterior_samples_df.attrs['limits'])
 
 
 def plot_traces(subplot: plt.SubplotSpec,
-                experiment: AttenuationExperiment,
-                parameters: List[np.ndarray],
+                samples: List[np.ndarray],
                 plot_trace: Callable) -> List[plt.Axes]:
 
     '''
-    Plot membrane traces for an attenuation experiment configured with the
-    given parameters.
+    Plot observations for the given samples in a grid.
 
-    For each parameter set a axis is created and the recorded membrane traces
-    are plotted in it.
-
-    :param subplot: Space in which to create the axes for the membrane traces.
-    :param experiment: Attenuation experiment used to record the membrane
-        traces.
-    :param parameters: Parameters at which the attenuation experiment is
+    :param subplot: Space in which to create the grid for the membrane traces.
+    :param samples: Parameters at which the attenuation experiment is
         configured.
-    :param plot_trace: Function used to plot the membrane trace of a single
-        experiment.
+    :param plot_trace: Function used to plot the observation of a single
+        parameter.
     :returns: List of created axes.
     '''
 
-    n_plots = len(parameters)
+    n_plots = len(samples)
     cols = min(math.ceil(np.sqrt(n_plots)), 3)
     rows = math.ceil(n_plots / cols)
     sub_grid = subplot.subgridspec(rows, cols)
 
-    fig = subplot.get_gridspec().figure
-
     axes = []
     ax = None
-    for n_sample, sample in enumerate(parameters):
-        ax = fig.figure.add_subplot(
-            sub_grid[math.floor(n_sample / cols), n_sample % cols],
-            sharex=ax, sharey=ax)
-        plot_trace(ax, experiment.record_data(sample))
+    for grid_cell, sample in zip(sub_grid, samples):
+        ax = plot_trace(grid_cell, sample, prev_axs=ax)
         axes.append(ax)
     return axes
 
 
-def plot_pairplot_and_trace(samples_posterior: pd.DataFrame,
-                            experiment: AttenuationExperiment,
-                            plot_trace: Callable,
-                            original_parameters: Optional[np.ndarray] = None,
-                            n_samples: int = 9) -> plt.Figure:
+def get_random_samples(samples_posterior: pd.DataFrame,
+                       n_samples: int = 9) -> np.ndarray:
     '''
-    Plot the distribution of the posterior samples and the membrane traces of
-    random samples from them.
-
-    Display the posterior sample distribution in form of pairplots, draw random
-    samples from these samples and display the membrane traces for these random
-    samples.
+    Draw random samples from the posterior samples.
 
     :param posterior_samples: DataFrame with samples drawn from the posterior.
-    :param experiment: Attenuation experiment used to record the membrane
-        traces.
-    :param plot_trace: Function used to plot the membrane trace of a single
-        experiment.
-    :param original_parameters: If provided mark the original parameters on
-        which the posterior was conditioned and plot the membrane trace for
-        these parameters.
     :param n_samples: Number of random samples to draw from the posterior.
-    :returns: The created figure.
+    :returns: List of random parameters sampled from the posterior samples.
     '''
-    # Random samples
     rand_idx = np.random.choice(samples_posterior.shape[0],
                                 size=n_samples,
                                 replace=False)
-    samples = samples_posterior['parameters'].values[rand_idx, :]
-    axis_annotations = [str(n_sample) for n_sample, _ in enumerate(samples)]
+    return samples_posterior['parameters'].values[rand_idx, :]
 
-    # Original parameters
-    if original_parameters is not None:
-        # Parameters might be set globally -> restrict to two values
-        if samples.shape[1] == 2:
-            original_parameters = original_parameters[[0, -1]]
-        samples = np.vstack([samples, original_parameters])
-        axis_annotations.append(f'{n_samples} (Target)')
 
-    # Plotting
+def plot_pairplot_and_trace(samples_posterior: pd.DataFrame,
+                            samples: np.ndarray,
+                            plot_trace: Callable,
+                            annotations: Optional[List[str]] = None
+                            ) -> plt.Figure:
+    '''
+    Plot the distribution of the posterior samples and the membrane traces of
+    selected samples from them.
+
+    Display the posterior sample distribution in form of pairplots and mark
+    selected samples in them. For each selected sample display the experiment
+    observation.
+
+    :param posterior_samples: DataFrame with samples drawn from the posterior.
+    :param samples: Selected samples to mark in posterior distribution and
+        for which to display the observation.
+    :param plot_trace: Function used to plot the membrane trace of a single
+        experiment.
+    :param annotations: Annotations for the different samples.
+    :returns: The created figure.
+    '''
+    if annotations is None:
+        annotations = [str(n_sample) for n_sample, _ in enumerate(samples)]
+
     fig = plt.figure(figsize=np.array([1, 2]) * 15)
-    base_grid = fig.add_gridspec(2)
+    grid = fig.add_gridspec(2)
 
-    plot_posterior_and_enumerate(base_grid[0], samples_posterior, samples)
-    axes = plot_traces(base_grid[1], experiment, samples, plot_trace)
+    plot_posterior_and_enumerate(grid[0], samples_posterior, samples)
+    axes = plot_traces(grid[1], samples, plot_trace)
 
-    for ax, annotation in zip(axes, axis_annotations):
-        text = AnchoredText(annotation, prop=dict(size=15), frameon=False,
-                            loc='upper right')
-        ax.add_artist(text)
+    for ax, annotation in zip(axes, annotations):
+        ax[0].set_title(annotation, loc='left')
 
     return fig
 
@@ -187,17 +190,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     pos_samples_df = pd.read_pickle(args.posterior_samples_file)
+    target_df = pd.read_pickle(pos_samples_df.attrs['target_file'])
 
-    target_df = pos_samples_df.attrs['target_file']
-    attenuation_exp = get_experiment(target_df)
-
-    orig_parameters = None
+    # Get random samples
+    params = get_random_samples(pos_samples_df, args.n_samples)
+    param_annotation = [str(n_sample) for n_sample, _ in enumerate(params)]
     if args.plot_original_parameter:
-        orig_parameters = target_df.attrs['parameters']
+        original_parameters = target_df.attrs['parameters']
+        # Parameters might be set globally -> restrict to two values
+        if params.shape[1] == 2:
+            original_parameters = original_parameters[[0, -1]]
+        params = np.vstack([params, original_parameters])
+        param_annotation.append(f'{len(params) - 1} (Target)')
+
+    experiment = get_experiment(target_df)
+    plotting_func = partial(plot_trace_attenuation,
+                            recording_function=experiment.record_data)
 
     figure = plot_pairplot_and_trace(pos_samples_df,
-                                     attenuation_exp,
-                                     plot_trace_attenuation,
-                                     original_parameters=orig_parameters,
-                                     n_samples=args.n_samples)
+                                     params,
+                                     plotting_func,
+                                     annotations=param_annotation)
     figure.savefig('pairplot_and_traces.png')
