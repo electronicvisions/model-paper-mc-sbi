@@ -58,8 +58,9 @@ def plot_ppc_amplitudes(axs: np.ndarray, posterior_dfs: Sequence[pd.DataFrame],
     observations = []
     for posterior_df in posterior_dfs:
         amplitudes = posterior_df['amplitudes']
-        observations.append(extract_observation(amplitudes[~amplitudes.isna()],
-                                                Observation.AMPLITUDES))
+        observations.append(extract_observation(
+            amplitudes[~np.any(amplitudes.isna(), axis=1)],
+            Observation.AMPLITUDES))
     target = extract_observation(target_df, Observation.AMPLITUDES)
 
     plot_ppc_result(axs, observations, target)

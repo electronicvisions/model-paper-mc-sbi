@@ -6,28 +6,57 @@ from typing import Tuple, Sequence
 
 import neo
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import ConnectionPatch
 from matplotlib.transforms import blended_transform_factory
 import quantities as pq
 
+from paper_sbi.plotting.grid_search import plot_grid_search
 from paper_sbi.plotting.helper import get_figure_width, COMPARTMENT_COLORS, \
-    add_scalebar, latex_enabled
+    add_scalebar, latex_enabled, formatted_parameter_names_bss, replace_latex
 
 
-def create_evaluation_plots(traces: Sequence[neo.IrregularlySampledSignal],
+def create_evaluation_plots(example_traces: Sequence[neo.Block],
+                            grid_search_df: pd.DataFrame,
                             v_per_madc: float) -> None:
     '''
-    Create plot which illustrate how the experiments are evaluated.
+    Create plot which illustrate how the experiments are evaluated and
+        illustiate the results of the grid search.
 
+    :param example_traces: Blocks with example traces to plot. The first block
+        is used to vizualize the evaluation method.
     :param traces: Sequence of membrane traces, one for each compartment.
         Used to illustrate how PSP amplitudes are extracted.
     :param v_per_madc: Value of a single MADC bit in volts.
+    :param grid_search_df: Results of a two-dimensional grid search.
     '''
     fileformat = 'pgf' if latex_enabled() else 'svg'
-    figure = plot_psp_evaluation((get_figure_width('single'), 1.2), traces,
-                                 v_per_madc)
+    width_double = get_figure_width('double')
+
+    # Evaluation
+    figure = plot_psp_evaluation(
+        (width_double * 0.7, 1.5),
+        example_traces[0].segments[-1].irregularlysampledsignals,
+        v_per_madc)
     figure.savefig(f'psp_evaluation.{fileformat}')
+    plt.close()
+
+    # Grid search
+    trace_params = [block.annotations['parameters'][[0, -1]] for block
+                    in example_traces]
+
+    param_names = formatted_parameter_names_bss()
+    if not latex_enabled():
+        param_names = replace_latex(param_names)
+    figure = plot_grid_search((width_double * 0.3, 1.9), grid_search_df,
+                              trace_params, param_names,
+                              levels=[0.8, 1.17, 1.6, 2],
+                              label_locations=[(350, 900),
+                                               (500, 800),
+                                               (700, 550),
+                                               (650, 200)])
+    figure.savefig(f'grid_search.{fileformat}')
     plt.close()
 
 
@@ -47,7 +76,7 @@ def plot_psp_evaluation(figsize: Tuple[float, float],
     spike_times = traces[0].annotations['input_spikes']
     fig, axs = plt.subplots(len(traces), sharex=True, sharey=True,
                             figsize=figsize,
-                            gridspec_kw={'left': 0.01, 'right': 0.96,
+                            gridspec_kw={'left': 0.1, 'right': 0.96,
                                          'top': 0.93, 'bottom': 0.005,
                                          'hspace': 0.2})
 

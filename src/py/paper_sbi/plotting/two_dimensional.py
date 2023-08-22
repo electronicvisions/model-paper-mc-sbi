@@ -3,34 +3,32 @@ Evaluation of the experiments with a two-dimensional parameter space.
 '''
 from copy import copy, deepcopy
 import logging
-from typing import List, Tuple, Sequence, Optional, Dict, Union
+from typing import List, Tuple, Sequence
 
 import neo
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 import pandas as pd
 import quantities as pq
 import scipy
 
-from model_hw_mc_attenuation.plotting.grid_search import \
-    create_obs_dataframe, plot_heat_map, plot_contour_lines
 from model_hw_mc_attenuation import Observation, extract_psp_heights
 from model_hw_mc_attenuation.extract import extract_observation
 
+from paper_sbi.plotting.grid_search import plot_grid_search_diff
+from paper_sbi.plotting.expected_coverage import plot_expected_coverage
 from paper_sbi.plotting.helper import get_figure_width, COMPARTMENT_COLORS, \
     add_scalebar, formatted_parameter_names_bss, replace_latex, \
-    latex_enabled, add_legend_with_patches
+    latex_enabled, add_legend_with_patches, DataSingleObservation, Parameter, \
+    annotate_circled, mark_points
 
 from paramopt.plotting.posterior import plot_posterior, label_low_high
 from paramopt.plotting.density import plot_2d_scatter
 from paramopt.plotting.pairplot import pairplot, create_axes_grid
 
 
-Parameter = Tuple[float, float]
-
-
-def log_results(posterior_dfs: Dict[Observation, pd.DataFrame],
+def log_results(samples_length: pd.DataFrame,
+                samples_amplitudes: pd.DataFrame,
                 target_df: pd.DataFrame) -> None:
     '''
     Log the results for experiments executed with a two-dimensional parameter
@@ -39,13 +37,16 @@ def log_results(posterior_dfs: Dict[Observation, pd.DataFrame],
     This logs the target length constant, the result of posterior predictive
     check of the length constant as well as the correlation between parameters.
 
-    :param posterior_dfs: DataFrames with parameters and observations.
+    :param samples_length: Samples drawn from the posterior where the length
+        constant was used as an observable.
+    :param samples_amplitudes: Samples drawn from the posterior where
+        amplitudes_first was used as an observable.
     :param target_df: DataFrame from which the target was extracted.
     '''
 
     log_target(target_df)
-    log_ppc_result(posterior_dfs[Observation.LENGTH_CONSTANT])
-    log_correlations(posterior_dfs)
+    log_ppc_result(samples_length)
+    log_correlations(samples_length, samples_amplitudes)
 
 
 def log_target(target_df: pd.DataFrame) -> None:
@@ -66,19 +67,24 @@ def log_ppc_result(posterior_df: pd.DataFrame) -> None:
     :param posterior_df: DataFrames with posterior samples and recorded
         observations.
     '''
-    obs = extract_observation(posterior_df['amplitudes'],
+    amplitudes = posterior_df['amplitudes']
+    obs = extract_observation(amplitudes[~np.any(amplitudes.isna(), axis=1)],
                               Observation.LENGTH_CONSTANT)
     logging.info('PPC length_constant %.2f +- %.2f', obs.mean(), obs.std())
 
 
-def log_correlations(posterior_dfs: Dict[Observation, pd.DataFrame]) -> None:
+def log_correlations(samples_length: pd.DataFrame,
+                     samples_amplitudes: pd.DataFrame) -> None:
     '''
     Log the Pearson correlation coefficient of the first two parameters.
 
-    :param posterior_dfs: DataFrames with parameters for which to log the
-        correlation.
+    :param samples_length: Samples drawn from the posterior where the length
+        constant was used as an observable.
+    :param samples_amplitudes: Samples drawn from the posterior where
+        amplitudes_first was used as an observable.
     '''
-    for observation, samples in posterior_dfs.items():
+    for observation, samples in zip(['Length Constant', 'Amplitude First'],
+                                    [samples_length, samples_amplitudes]):
         corr = scipy.stats.pearsonr(samples['parameters'].values[:, 0],
                                     samples['parameters'].values[:, 1])
         logging.info('Correlation %s: %s', observation, corr)
@@ -90,8 +96,8 @@ def log_correlations(posterior_dfs: Dict[Observation, pd.DataFrame]) -> None:
 def create_two_dim_plots(*,
                          grid_search_df: pd.DataFrame,
                          example_traces: Sequence[neo.Block],
-                         posterior,
-                         posterior_dfs: Sequence[pd.DataFrame],
+                         data_length_constant: DataSingleObservation,
+                         data_amplitudes: DataSingleObservation,
                          original_parameters: Parameter,
                          v_per_madc: float):
     '''
@@ -105,11 +111,10 @@ def create_two_dim_plots(*,
 
     :param grid_search_df: Results of a two-dimensional grid search.
     :param example_traces: Blocks with example traces to plot.
-    :param posterior: Posterior for which to plot the probability distribution.
-    :param posterior_dfs: DataFrames with samples drawn from the posterior.
-        The first DataFrame is assumed to use the length constant as a target,
-        the second DataFrame is assumed to use the amplitudes in the first
-        compartment as a target.
+    :param data_length_constant: Data for experiments with length constant
+        as an observation.
+    :param data_amplitudes: Data for experiments with amplitudes as an
+        observation.
     :param original_parameters: Initial parameters used to record the
         observation on which the posteriors are conditioned.
     :param v_per_madc: Characterization of the MADC. How much volt a single
@@ -128,89 +133,59 @@ def create_two_dim_plots(*,
         param_names = replace_latex(param_names)
 
     # Grid Search
-    figure = plot_grid_search((figure_width, heights_2d), grid_search_df,
-                              trace_params, param_names,
-                              levels=[0.8, 1.17, 1.6, 2],
-                              label_locations=[(350, 900),
-                                               (500, 800),
-                                               (700, 550),
-                                               (650, 200)])
-    figure.savefig(f'grid_search.{fileformat}')
+    target = data_length_constant.posterior_samples.attrs['target']
+    figure = plot_grid_search_diff((figure_width, heights_2d), grid_search_df,
+                                   trace_params, param_names,
+                                   levels=[0.2, 0.5, 1],
+                                   target_length_constant=target)
+    figure.savefig(f'grid_search_diff.{fileformat}')
     plt.close()
 
     # Posterior
-    figure = plot_posterior_prob((figure_width, heights_2d), posterior,
+    figure = plot_posterior_prob((figure_width, heights_2d),
+                                 data_length_constant.posteriors[-1],
                                  trace_params, param_names)
     figure.savefig(f'posterior.{fileformat}')
     plt.close()
 
     # Samples
-    figure = plot_posterior_samples((figure_width, heights_2d),
-                                    posterior_dfs,
-                                    original_parameters,
-                                    trace_params,
-                                    param_names)
+    figure = plot_posterior_samples(
+        (figure_width, heights_2d),
+        samples_length=data_length_constant.posterior_samples,
+        samples_amplitudes=data_amplitudes.posterior_samples,
+        original_parameters=original_parameters,
+        marker_points=trace_params,
+        param_names=param_names)
     figure.savefig(f'posterior_samples.{fileformat}')
     plt.close()
 
     # Traces
     example_traces = [_rescale_times(block, pq.us) for block in example_traces]
-    traces_amp = [_scale_by_psp_amplitude(block) for block in example_traces]
-    figure = plot_traces((figure_width, height_traces), traces_amp)
+    figure = plot_traces(
+        (figure_width, height_traces),
+        [_scale_by_psp_amplitude(block) for block in example_traces])
     figure.savefig(f'traces_scaled.{fileformat}')
     plt.close()
 
-    traces_v = [_scale(block, v_per_madc * pq.V) for block in example_traces]
-    figure = plot_traces((figure_width, height_traces), traces_v)
+    figure = plot_traces(
+        (figure_width, height_traces),
+        [_scale(block, v_per_madc * pq.V) for block in example_traces])
     figure.savefig(f'traces.{fileformat}')
     plt.close()
 
-
-def plot_grid_search(figsize: Tuple[float, float],
-                     data: pd.DataFrame,
-                     marker_points: Sequence[Parameter],
-                     param_names: Sequence[str], *,
-                     levels: Union[int, Sequence[float]] = 4,
-                     label_locations: Optional[Sequence] = None
-                     ) -> plt.Figure:
-    '''
-    Plot the measured length constant in a heat map.
-
-    :param figsize: Size of the figure (width, height).
-    :param data: Results of a two-dimensional grid search.
-    :param marker_points: Points in the parameter space which should be marked
-        with increasing numbers.
-    :param param_names: Names of the parameters. Used to label the axes.
-    :param levels: Levels of the plotted contour lines.
-    :param label_locations: Positions where labels of contour plots should be
-        placed.
-    :returns: Figure with a heat map of the measured length constant.
-    '''
-    fig, ax = plt.subplots(figsize=figsize,
-                           gridspec_kw={'left': 0.2, 'right': 0.9,
-                                        'top': 0.83, 'bottom': 0.19})
-
-    length_constants = create_obs_dataframe(data, Observation.LENGTH_CONSTANT)
-    im_plot = plot_heat_map(ax, length_constants)
-
-    color_bar = ax.figure.colorbar(im_plot, ax=ax)
-    color_bar.set_label(r'Decay Constant $\tau$ / comp')
-
-    color_bar.locator = ticker.MaxNLocator(integer=True)
-    color_bar.update_ticks()
-
-    contour = plot_contour_lines(ax, length_constants, smooth_sigma=3,
-                                 levels=levels)
-    if label_locations is None:
-        ax.clabel(contour, inline=True)
-    else:
-        ax.clabel(contour, inline=True, manual=label_locations)
-
-    ax.set_xlabel(param_names[0])
-    ax.set_ylabel(param_names[1])
-    mark_points(ax, marker_points)
-
-    return fig
+    # Expected Coverage
+    titles = [r'Decay $\tau$', r'Height $\myvec{F}$']
+    if not latex_enabled():
+        titles = [replace_latex(title) for title in titles]
+    figure = plot_expected_coverage(
+        (get_figure_width('single'), 2),
+        data_ensemble=[data_length_constant.coverage_ensemble,
+                       data_amplitudes.coverage_ensemble],
+        data_single=[data_length_constant.coverage_single,
+                     data_amplitudes.coverage_single],
+        titles=titles)
+    figure.savefig(f'expected_coverage_2d.{fileformat}')
+    plt.close()
 
 
 def plot_posterior_prob(figsize: Tuple[float, float],
@@ -244,8 +219,9 @@ def plot_posterior_prob(figsize: Tuple[float, float],
     return fig
 
 
-def plot_posterior_samples(figsize: Tuple[float, float],
-                           posterior_dfs: Sequence[pd.DataFrame],
+def plot_posterior_samples(figsize: Tuple[float, float], *,
+                           samples_length: pd.DataFrame,
+                           samples_amplitudes: pd.DataFrame,
                            original_parameters: Parameter,
                            marker_points: Sequence[Parameter],
                            param_names: Sequence[str]) -> plt.Figure:
@@ -253,10 +229,10 @@ def plot_posterior_samples(figsize: Tuple[float, float],
     Plot the posterior samples in a two-dimensional scatter plot.
 
     :param figsize: Size of the figure (width, height).
-    :param posterior_dfs: DataFrames with samples drawn from the posterior.
-        The first DataFrame is assumed to use the length constant as a target,
-        the second DataFrame is assumed to use the amplitudes in the first
-        compartment as a target.
+    :param samples_length: Samples drawn from the posterior where the length
+        constant was used as an observable.
+    :param samples_amplitudes: Samples drawn from the posterior where
+        amplitudes_first was used as an observable.
     :param original_parameters: Initial parameters used to record the
         observation on which the posteriors are conditioned.
     :param marker_points: Points in the parameter space which should be marked
@@ -264,18 +240,13 @@ def plot_posterior_samples(figsize: Tuple[float, float],
     :param param_names: Names of the parameters. Used to label the axes.
     :returns: Figure with scatter plot of the posterior samples.
     '''
-    assert posterior_dfs[0].attrs['observation'] == \
-        Observation.LENGTH_CONSTANT.name
-    assert posterior_dfs[1].attrs['observation'] == \
-        Observation.AMPLITUDES_FIRST.name
-
     fig = plt.figure(figsize=figsize)
     base_grid = fig.add_gridspec(1, left=0.25, right=0.99, top=0.99,
                                  bottom=0.19)
     axs = create_axes_grid(base_grid[0], 2)
 
-    for samples in posterior_dfs:
-        pairplot(axs, samples['parameters'].values[::2],
+    for samples in [samples_length, samples_amplitudes]:
+        pairplot(axs, samples['parameters'].values[::20],
                  labels=param_names,
                  plot_2d_dist=plot_2d_scatter,
                  limits=samples.attrs['limits'],
@@ -348,37 +319,6 @@ def trim_around_first_input(signal: neo.IrregularlySampledSignal,
     t_start = spike_times[0] - isi * margin[0]
     t_stop = spike_times[0] + isi * margin[1]
     return signal.time_slice(t_start, t_stop)
-
-
-def annotate_circled(ax: plt.Axes, point: Tuple[float, float], text: str,
-                     **kwargs) -> None:
-    '''
-    Add an annotation with a circle around it.
-
-    Keyword arguments are forwarded to :meth:`plt.Axes.annotate`.
-
-    :param ax: Axis to which the annotation is added.
-    :param point:  x and y coordinate where the annotation is added.
-    :param text: Text of the annotation.
-    '''
-    default_kwargs = {'ha': 'center', 'va': 'center',
-                      'bbox': {'boxstyle': 'circle, pad=0.3', 'fc': 'w',
-                               'ec': 'k', 'lw': 0.8},
-                      'size': 6}
-    default_kwargs.update(kwargs)
-    ax.annotate(text, xy=point, **default_kwargs)
-
-
-def mark_points(ax: plt.Axes, points: Sequence[Parameter]) -> None:
-    '''
-    Mark the given points with increasing numbers.
-
-    :param ax: Axis in which to mark the points.
-    :param point: Points at which annotations with increasing numbers are
-        added.
-    '''
-    for n_point, point in enumerate(points):
-        annotate_circled(ax, point, str(n_point))
 
 
 def _create_traces_figure(figsize: Tuple[float, float],

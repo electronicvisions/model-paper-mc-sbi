@@ -1,20 +1,46 @@
 '''
 Helper functions for styling and annotating plots.
 '''
+from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union, Sequence, Dict
 import re
 from functools import partial
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from matplotlib.offsetbox import AnchoredOffsetbox, AuxTransformBox
 from matplotlib.patches import Patch
 
+from sbi.inference.posteriors.base_posterior import NeuralPosterior
+
+from paper_sbi.plotting.expected_coverage import ExpectedCoverageData
+
+
+Parameter = Tuple[float, float]
+
 
 # Colors for the different compartments in an attenuation experiment with four
 # compartments
-COMPARTMENT_COLORS = ['#0D0D0D', '#404040', '#737373', '#A6A6A6']
+COMPARTMENT_COLORS = ["#66a61e", "#e6ab02", "#a6761d", "#666666"]
+
+
+@dataclass
+class DataSingleObservation:
+    '''
+    Data of a single observation type.
+
+    :ivar posterior: Posterior distribution.
+    :ivar posterior_samples: Samples drawn from the posterior.
+    :ivar coverage_ensemble: Data needed to calculate the expected coverage.
+    :ivar coverage_single: Data needed to calculate the expected coverage of
+        the posteriors which make up the ensemble.
+    '''
+    posteriors: List[NeuralPosterior]
+    posterior_samples: pd.DataFrame
+    coverage_ensemble: ExpectedCoverageData
+    coverage_single: List[ExpectedCoverageData]
 
 
 def latex_enabled():
@@ -264,3 +290,34 @@ def add_legend_with_patches(ax: plt.Axes, labels: List[str], colors: List,
     legend_elements = [Patch(facecolor=color, ec='none', label=label)
                        for color, label in zip(colors, labels)]
     ax.legend(handles=legend_elements, **kwargs)
+
+
+def mark_points(ax: plt.Axes, points: Sequence[Parameter]) -> None:
+    '''
+    Mark the given points with increasing numbers.
+
+    :param ax: Axis in which to mark the points.
+    :param point: Points at which annotations with increasing numbers are
+        added.
+    '''
+    for n_point, point in enumerate(points):
+        annotate_circled(ax, point, str(n_point))
+
+
+def annotate_circled(ax: plt.Axes, point: Tuple[float, float], text: str,
+                     **kwargs) -> None:
+    '''
+    Add an annotation with a circle around it.
+
+    Keyword arguments are forwarded to :meth:`plt.Axes.annotate`.
+
+    :param ax: Axis to which the annotation is added.
+    :param point:  x and y coordinate where the annotation is added.
+    :param text: Text of the annotation.
+    '''
+    default_kwargs = {'ha': 'center', 'va': 'center',
+                      'bbox': {'boxstyle': 'circle, pad=0.3', 'fc': 'w',
+                               'ec': 'k', 'lw': 0.8},
+                      'size': 6}
+    default_kwargs.update(kwargs)
+    ax.annotate(text, xy=point, **default_kwargs)

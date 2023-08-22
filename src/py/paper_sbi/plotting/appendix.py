@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import pickle
-from typing import Tuple, Sequence, Any
+from typing import Tuple, Sequence, Any, Optional
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,8 +20,10 @@ from model_hw_mc_attenuation.bss import integration_bounds
 from model_hw_mc_attenuation.extract import extract_observation
 
 from paper_sbi.plotting.helper import latex_enabled, \
-    formatted_parameter_names_bss, replace_latex, get_figure_width
+    formatted_parameter_names_bss, replace_latex, get_figure_width, \
+    DataSingleObservation
 
+from paramopt.plotting.pairplot import pairplot, create_axes_grid
 from paramopt.plotting.posterior import plot_posterior, label_low_high
 from paramopt.plotting.density import plot_2d_scatter
 
@@ -136,6 +138,9 @@ def create_appendix_plots(
         hyperparameter_plot: HyperparameterPlot,
         posterior_evolution_plot: PosteriorEvolutionPlot,
         ppc_deviations: np.ndarray,
+        data_hd_amp_first: DataSingleObservation,
+        data_hd_amp_all: DataSingleObservation,
+        target_df: pd.DataFrame,
         example_blocks: Sequence[neo.IrregularlySampledSignal],
         madc_slope: float):
     '''
@@ -152,6 +157,14 @@ def create_appendix_plots(
         columns represent different rounds, different rows different trials
         of the approximation. Used to illustrate how the mean deviation
         changes over rounds.
+    :param data_hd_amp_first: Data for experiments high-dimensional experiments
+        with amplitudes_first as an observation.
+        The prior of the ensemble will be used to display the prior predictive
+        check.
+    :param data_hd_amp_all: Data for experiments for high_dimensional
+        experiments with all amplitudes as an observation.
+    :param target_df: DataFrame from which the target observation can be
+        extracted.
     :param example_blocks: Traces from which the PSP amplitudes are extracted
         and an exponential is fitted to.
     :param madc_slope: Characterization of the MADC. How much volt a single
@@ -192,6 +205,27 @@ def create_appendix_plots(
     figure = plot_example_fits((figure_width, 1.8),
                                example_blocks, madc_slope)
     figure.savefig(f'exponential_fit.{fileformat}')
+    plt.close()
+
+    # High-dimensional pairplots
+    pairplot_size = [get_figure_width('double')] * 2
+    figure = plot_pairplot(figsize=pairplot_size,
+                           samples_df=data_hd_amp_first.posterior_samples,
+                           target_params=target_df.attrs['parameters'])
+    figure.savefig(f'pairplot_hd_amp_first.{fileformat}')
+    plt.close()
+
+    figure = plot_pairplot(figsize=pairplot_size,
+                           samples_df=data_hd_amp_all.posterior_samples,
+                           target_params=target_df.attrs['parameters'])
+    figure.savefig(f'pairplot_hd_amp_all.{fileformat}')
+    plt.close()
+
+    figure = plot_prior_predictive_check(
+        figsize=(get_figure_width("double"), 4),
+        prior_df=data_hd_amp_first.coverage_ensemble.prior_samples,
+        target_df=target_df)
+    figure.savefig(f'prior_predictive_check.{fileformat}')
     plt.close()
 
 
@@ -342,11 +376,16 @@ def plot_hyperparameter(figsize: Tuple[float, float],
     '''
     fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
+    n_transforms = info.n_transforms[0]
     for n_group, deviations_group in enumerate(deviations):
         ax.scatter(np.full_like(deviations_group, n_group, dtype=int),
                    deviations_group,
-                   c=f'C{info.n_transforms[n_group]}',
+                   c='C1',
                    alpha=0.6, s=15, lw=0)
+        # plot vertical line if number of transforms changes.
+        if n_transforms != info.n_transforms[n_group]:
+            ax.axvline(n_group - 0.5, c='k', ls=':', alpha=0.5)
+            n_transforms = info.n_transforms[n_group]
 
     ax.set_xticks(range(len(deviations)),
                   list(zip(info.n_transforms, info.n_hidden)),
@@ -415,6 +454,79 @@ def plot_example_fits(figsize: Tuple[float, float],
     return fig
 
 
+def plot_pairplot(figsize: Tuple[float, float],
+                  samples_df: pd.DataFrame,
+                  target_params: Optional[Sequence[float]] = None
+                  ) -> plt.Figure:
+    '''
+    Display the given samples in a pairplot.
+
+    :param figsize: Size of the figure (width, height).
+    :param samples_df: DataFrame with samples to plot.
+    :pram target_parmas: Targets for the differnt parameters.
+    :returns: Pairplot of the supplied smaples.
+    '''
+    fig = plt.figure(figsize=figsize, tight_layout=True)
+    base_gs = fig.add_gridspec(1)
+    axes = create_axes_grid(base_gs[0], samples_df['parameters'].shape[1])
+
+    param_names = formatted_parameter_names_bss(samples_df.attrs['length'])
+    if not latex_enabled():
+        param_names = replace_latex(param_names)
+
+    pairplot(axes, samples_df['parameters'].values, labels=param_names,
+             limits=samples_df.attrs['limits'],
+             kwargs_1d={'c': 'C0'},
+             kwargs_2d={'max_points': 100, 's': 1, 'alpha': 0.5, 'c': 'C0'},
+             target_params=target_params)
+
+    return fig
+
+
+def plot_prior_predictive_check(figsize: Tuple[float, float],
+                                prior_df: pd.DataFrame,
+                                target_df: pd.DataFrame) -> plt.Figure:
+    '''
+    Plot the mean distance to the target observation for the observations
+    of the given samples.
+
+    We use this plot to illustrate the results of a prior predictive check.
+
+    :param figsize: Size of the figure (width, height).
+    :param posterior_dfs: Data Frame with prior samples and their recorded
+        amplitudes.
+    :param target_df: DataFrame from which the target observation can be
+        extracted.
+    :returns: Figure with the results of posterior predictive check.
+    '''
+    length = prior_df.attrs['length']
+    fig, axs = plt.subplots(length, length, figsize=figsize,
+                            sharex=True, sharey=True,
+                            gridspec_kw={'left': 0.1, 'right': 0.98,
+                                         'top': 0.99, 'bottom': 0.1,
+                                         'hspace': 0.1, 'wspace': 0.2})
+    # Extract_data
+    amplitudes = prior_df['amplitudes']
+    obs = extract_observation(amplitudes[~np.any(amplitudes.isna(), axis=1)],
+                              Observation.AMPLITUDES)
+    target = extract_observation(target_df, Observation.AMPLITUDES)
+    norm_data = (obs - target.mean(0)) / target.std(0)
+
+    for ax, data in zip(axs.flatten(), norm_data.T):
+        obs_mean = data.mean()
+        obs_std = data.std()
+        ax.axvspan(obs_mean - obs_std, obs_mean + obs_std, facecolor='k',
+                   alpha=0.2)
+        ax.axvline(obs_mean, c='k', ls=':')
+        ax.hist(data, bins=np.arange(-10, 11, 2))
+        ax.set_xlim(-10, 10)
+
+    fig.supxlabel(r'Deviation from Target / $\sigma^*$', c='0.3', size=6)
+    fig.supylabel(r'Number of Samples', c='0.3', size=6)
+
+    return fig
+
+
 ###############################################################################
 # Helper
 ###############################################################################
@@ -480,8 +592,10 @@ def extract_deviations_dataframe(results_folder: Path,
 
             samples = pd.read_pickle(folder.joinpath(
                 f'posterior_samples_{n_last}.pkl'))
+            amplitudes = samples['amplitudes']
+            amplitudes = amplitudes[~np.any(amplitudes.isna(), axis=1)]
             deviation = np.mean(get_distance_to_target_obs(
-                samples['amplitudes'], samples.attrs['target'],
+                amplitudes, samples.attrs['target'],
                 Observation[samples.attrs['observation']]))
             deviations_group.append(deviation)
         deviations.append(deviations_group)
@@ -496,16 +610,16 @@ def get_group_infos(overview: pd.DataFrame, results_folder: Path
     The experiments are grouped by the `n_transforms` and `n_hidden`.
 
     :param overview: DataFrame with the different experiments. Needs to have
-        the columns `n_transforms` and `n_hidden`. The index of the DataFrame
-        is assumed to be the index of the experiment. Each experiment should
-        have a folder named after its index in `results_folder`. In this
+        the columns `nde.n_transforms` and `nde.n_hidden`. The index of the
+        DataFrame is assumed to be the index of the experiment. Each experiment
+        should have a folder named after its index in `results_folder`. In this
         folder a file `posteriors.pkl` with the approximated posterior is
         assumed.
     :param results_folder: Folder which contains folders for the different
         experiments.
     :returns: Information about the different groups.
     '''
-    columns = ['n_transforms', 'n_hidden']
+    columns = ['nde.n_transforms', 'nde.n_hidden']
     groups = overview.groupby(columns)
 
     # extract number of model parameters from first experiment in group
@@ -546,8 +660,10 @@ def extract_deviation_from_files(folders: Sequence[Path],
         deviations_folder = []
         for posterior_file in posterior_files:
             samples = pd.read_pickle(folder.joinpath(posterior_file))
+            amplitudes = samples['amplitudes']
+            amplitudes = amplitudes[~np.any(amplitudes.isna(), axis=1)]
             deviation = np.mean(get_distance_to_target_obs(
-                samples['amplitudes'], samples.attrs['target'],
+                amplitudes, samples.attrs['target'],
                 Observation[samples.attrs['observation']]))
             deviations_folder.append(deviation)
         deviations.append(deviations_folder)

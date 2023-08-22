@@ -9,10 +9,11 @@ import pandas as pd
 import quantities as pq
 
 from paper_sbi.plotting.helper import get_figure_width, \
-    formatted_parameter_names, replace_latex, latex_enabled
+    formatted_parameter_names, replace_latex, latex_enabled, \
+    DataSingleObservation
+from paper_sbi.plotting.grid_search import plot_grid_search_diff
 from paper_sbi.plotting.two_dimensional import _scale_by_psp_amplitude, \
-    _scale, plot_traces, plot_posterior_prob, plot_posterior_samples, \
-    plot_grid_search
+    _scale, plot_traces, plot_posterior_prob, plot_posterior_samples
 
 
 Parameter = Tuple[float, float]
@@ -24,8 +25,8 @@ Parameter = Tuple[float, float]
 def create_simulation_plots(*,
                             grid_search_df: pd.DataFrame,
                             example_traces: Sequence[neo.Block],
-                            posterior,
-                            posterior_dfs: Sequence[pd.DataFrame],
+                            data_length_constant: DataSingleObservation,
+                            data_amplitudes: DataSingleObservation,
                             original_parameters: Parameter):
     '''
     Create all figures which are used to illustrate the results obtained for
@@ -38,11 +39,10 @@ def create_simulation_plots(*,
 
     :param grid_search_df: Results of a two-dimensional grid search.
     :param example_traces: Blocks with example traces to plot.
-    :param posterior: Posterior for which to plot the probability distribution.
-    :param posterior_dfs: DataFrames with samples drawn from the posterior.
-        The first DataFrame is assumed to use the length constant as a target,
-        the second DataFrame is assumed to use the amplitudes in the first
-        compartment as a target.
+    :param data_length_constant: Data for experiments with length constant
+        as an observation.
+    :param data_amplitudes: Data for experiments with amplitudes as an
+        observation.
     :param original_parameters: Initial parameters used to record the
         observation on which the posteriors are conditioned.
     '''
@@ -56,28 +56,29 @@ def create_simulation_plots(*,
     param_names = _get_parameter_names()
 
     # Grid Search
-    figure = plot_grid_search((figure_width, heights_2d), grid_search_df,
-                              trace_params, param_names,
-                              levels=[1.5, 2.65, 3.5, 4.5],
-                              label_locations=[(7.5e-5, 0.008),
-                                               (7e-5, 0.02),
-                                               (6.5e-5, 0.025),
-                                               (5e-5, 0.03)])
+    target = data_length_constant.posterior_samples.attrs['target']
+    figure = plot_grid_search_diff((figure_width, heights_2d), grid_search_df,
+                                   trace_params, param_names,
+                                   levels=[0.5, 1],
+                                   target_length_constant=target)
     figure.savefig(f'grid_search_arbor.{fileformat}')
     plt.close()
 
     # Posterior
-    figure = plot_posterior_prob((figure_width, heights_2d), posterior,
+    figure = plot_posterior_prob((figure_width, heights_2d),
+                                 data_length_constant.posteriors[-1],
                                  trace_params, param_names)
     figure.savefig(f'posterior_arbor.{fileformat}')
     plt.close()
 
     # Samples
-    figure = plot_posterior_samples((figure_width, heights_2d),
-                                    posterior_dfs,
-                                    original_parameters,
-                                    [],  # Do not mark traces (would hide data)
-                                    param_names)
+    figure = plot_posterior_samples(
+        (figure_width, heights_2d),
+        samples_length=data_length_constant.posterior_samples,
+        samples_amplitudes=data_amplitudes.posterior_samples,
+        original_parameters=original_parameters,
+        marker_points=[],  # points would cover samples
+        param_names=param_names)
     figure.savefig(f'posterior_samples_arbor.{fileformat}')
     plt.close()
 

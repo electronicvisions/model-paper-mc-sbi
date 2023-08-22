@@ -5,46 +5,72 @@ import math
 from typing import Sequence, Tuple
 
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import numpy as np
 import pandas as pd
 
 from model_hw_mc_attenuation import Observation
 
+from paper_sbi.plotting.expected_coverage import plot_expected_coverage
 from paper_sbi.plotting.ppc import plot_ppc_amplitudes
-from paper_sbi.plotting.helper import get_figure_width, \
+from paper_sbi.plotting.helper import formatted_parameter_names, \
     formatted_parameter_names_bss, replace_latex, latex_enabled, \
-    add_legend_with_patches
+    add_legend_with_patches, get_figure_width, DataSingleObservation
 
+from paramopt.plotting.correlation import plot_correlation_matrix, \
+    set_xlabels, set_ylabels
 from paramopt.plotting.marginals import plot_marginals
 
 
-def create_high_dim_plots(posterior_dfs: Sequence[pd.DataFrame],
+def create_high_dim_plots(data_amp_first: DataSingleObservation,
+                          data_amp_all: DataSingleObservation,
                           target_df: pd.DataFrame) -> None:
     '''
     Create figures which display the results obtained for a high-dimensional
     parameter space.
 
-    :param posterior_dfs: DataFrames with samples drawn from an approximated
-        posterior. The first DataFrame is assumed to use the amplitudes in
-        the first compartment as a target, the second DataFrame is assumed to
-        use all amplitudes as a target.
+    :param data_amp_first: Data for experiments with amplitudes_first as an
+        observation.
+    :param data_amp_all: Data for experiments with all amplitudes as an
+        observation.
     :param target_df: DataFrame from which the target observation can be
         extracted.
     '''
+    posterior_dfs = [data_amp_first.posterior_samples,
+                     data_amp_all.posterior_samples]
     fileformat = 'pgf' if latex_enabled() else 'svg'
-    width = get_figure_width('double') / 2
+    double_width = get_figure_width('double')
     height = 2
 
     # 1d marginals
     figure = plot_marginal_dist(
-        (width, height), posterior_dfs,
+        (double_width * 0.4, height), posterior_dfs,
         original_parameters=target_df.attrs['parameters'])
     figure.savefig(f'1d_marginals.{fileformat}')
     plt.close()
 
+    # Correlations
+    figure = plot_correlations((double_width * 0.6, height), posterior_dfs)
+    figure.savefig(f'correlations_md.{fileformat}')
+    plt.close()
+
     # PPC
-    figure = plot_ppc((width, height), posterior_dfs, target_df)
+    figure = plot_ppc((double_width / 2, height), posterior_dfs, target_df)
     figure.savefig(f'observations_md.{fileformat}')
+    plt.close()
+
+    # Expected Coverage
+    titles = [r'First comp. $\myvec{F}$', r'All comp. $\mymat{H}$']
+    if not latex_enabled():
+        titles = [replace_latex(title) for title in titles]
+    figure = plot_expected_coverage(
+        (double_width / 2, 2),
+        data_ensemble=[data_amp_first.coverage_ensemble,
+                       data_amp_all.coverage_ensemble],
+        data_single=[data_amp_first.coverage_single,
+                     data_amp_all.coverage_single],
+        titles=titles)
+    figure.savefig(f'expected_coverage_md.{fileformat}')
     plt.close()
 
 
@@ -76,9 +102,9 @@ def plot_marginal_dist(figsize: Tuple[int, int],
     fig, axs = plt.subplots(2, n_columns,
                             figsize=figsize,
                             sharey=True,
-                            gridspec_kw={'left': 0.01, 'right': 0.98,
+                            gridspec_kw={'left': 0.01, 'right': 0.97,
                                          'top': 0.99, 'bottom': 0.18,
-                                         'hspace': 1, 'wspace': 0.1})
+                                         'hspace': 1, 'wspace': 0.2})
     # For consistency with previous figures (2d parameter space), advance color
     # cycle by one
     for ax in axs.flatten():
@@ -150,6 +176,56 @@ def plot_ppc(figsize: Tuple[float, float],
         _advance_style_cycle(ax)
 
     plot_ppc_amplitudes(axs, posterior_dfs, target_df)
+
+    return fig
+
+
+def plot_correlations(figsize: Tuple[float, float],
+                      posterior_dfs: Sequence[pd.DataFrame]) -> plt.Figure:
+    '''
+    Plot the correlation between samples drawn from the posterior.
+
+    :param figsize: Size of the figure (width, height).
+    :param posterior_dfs: Data Frames with posterior samples.
+        The first DataFrame is assumed to use the amplitudes in the
+        first compartment as a target, the second DataFrame is assumed to use
+        all amplitudes as a target.
+    :returns: Figure with the correlation matrices of both sets of posterior
+        samples.
+    '''
+    assert posterior_dfs[0].attrs['observation'] == \
+        Observation.AMPLITUDES_FIRST.name
+    assert posterior_dfs[1].attrs['observation'] == Observation.AMPLITUDES.name
+
+    fig, axs = plt.subplots(1, 2, figsize=figsize,
+                            gridspec_kw={'left': 0.1, 'right': 0.99,
+                                         'top': 0.86, 'bottom': 0.11,
+                                         'hspace': 0.1, 'wspace': 0.1})
+
+    parameter_names = formatted_parameter_names(
+        posterior_dfs[0].attrs['length'])
+    if not latex_enabled():
+        parameter_names = replace_latex(parameter_names)
+
+    mappables = []
+    for ax, data in zip(axs, posterior_dfs):
+        mappables.append(plot_correlation_matrix(ax, data['parameters']))
+    set_xlabels(axs[0], parameter_names)
+    set_ylabels(axs[0], parameter_names)
+    set_xlabels(axs[1], parameter_names)
+
+    color_bar = fig.colorbar(mappables[0], ax=axs, pad=0.02)
+    color_bar.set_label(r'Pearson Correlation')
+    color_bar.locator = ticker.MaxNLocator(4)
+    color_bar.update_ticks()
+
+    titles = [r'First comp. $\myvec{F}$', r'All comp. $\mymat{H}$']
+
+    if not latex_enabled():
+        titles = [replace_latex(title) for title in titles]
+
+    for ax, title in zip(axs, titles):
+        ax.set_xlabel(title)
 
     return fig
 
