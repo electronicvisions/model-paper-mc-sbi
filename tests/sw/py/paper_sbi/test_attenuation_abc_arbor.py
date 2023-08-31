@@ -141,8 +141,10 @@ class TestEvaluation(unittest.TestCase):
                                                         self.abc_samples)
 
     def test_01_add_observables(self):
+        attenuation_exp = get_experiment(self.target_df)
         self.__class__.posterior_samples = \
-            add_observables(self.__class__.posterior_samples, 50)
+            add_observables(self.__class__.posterior_samples, attenuation_exp,
+                            50)
 
     def test_01_plot_pairplot(self):
         figure = plot_pairplot([self.posterior_samples])
