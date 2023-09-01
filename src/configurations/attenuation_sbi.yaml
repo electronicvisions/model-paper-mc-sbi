@@ -1,0 +1,29 @@
+# Configuration for approximating the posterior of an attenuation experiment with
+# simualtion-based inference
+
+# Path to pickled DataFrame which contains amplitudes of an attenuation experiment.
+# The mean over different runs will be used as a target observation.
+target: ~  # FIXME TODO this needs to be set
+
+# Determines what kind of observation is extracted from the attenuation experiment
+# and the provided target, e.g., length_constant, amplitudes, amplitudes_first
+observation: length_constant
+
+# Use the same leak conductance in all compartments and the same conductance between
+# compartments for all connections between compartments
+global_parameters: True
+
+seed: ~  # Random seed for pytorch and numpy. If not set, no seed is used
+
+sbi:
+  algorithm: SNPE # algorithm used to approximate a posterior, e.g., SNPE, MCABC
+  n_sim_first: 500  # Number of simulations in first approximation round
+  n_sim_rest: 500  # Number of simulations in remaining approximation rounds
+  n_rounds: 2  # Number of approximation rounds. Needs to be '1' for non-sequential algorithms
+
+nde:
+  model: maf  # Type of neural density estimator, e.g., maf, nsf, mdn
+  n_transforms: 5  # Number of transforms for flow-based neural density estimators
+  n_hidden: 50  # Number of features in hidden layers of neural density estimators
+  z_score: independent  # How the observations are z-scored, e.g., none, independent, structured
+

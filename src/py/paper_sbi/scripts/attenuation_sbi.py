@@ -185,103 +185,42 @@ def main(target_data: pd.DataFrame,
 if __name__ == '__main__':
     import argparse
     import pickle
+    import yaml
 
     parser = argparse.ArgumentParser(
         description="Perform an SBI algorithm to approximate a posterior."
                     "The posterior will be restricted to a given target "
                     "observation if several rounds of a sequential algorithm "
                     "are executed or a rejection based algorithm is used.")
-    parser.add_argument("target",
-                        help="Path to pickled DataFrame which contains "
-                             "amplitudes of an attenuation experiment. The "
-                             "mean over different runs will be used as a "
-                             "target.",
+    parser.add_argument("configuration",
+                        help="Path to YAML file with configuration.",
                         type=str)
-    parser.add_argument("-observation",
-                        help="Determines what kind of observation is "
-                             "extracted from the attenuation experiment and "
-                             "the provided target",
-                        type=str,
-                        default=Observation.LENGTH_CONSTANT.name.lower(),
-                        choices=[Observation.LENGTH_CONSTANT.name.lower(),
-                                 Observation.AMPLITUDES.name.lower(),
-                                 Observation.AMPLITUDES_FIRST.name.lower()])
-
-    parser.add_argument("-algorithm",
-                        help="Algorithm used to approximate a posterior.",
-                        type=str,
-                        default=Algorithm.SNPE.name,
-                        choices=[alg.name for alg in Algorithm])
-    parser.add_argument("-n_sim_first",
-                        help="Number of simulations in first approximation "
-                             "round.",
-                        type=int,
-                        default=500)
-    parser.add_argument("-n_sim_rest",
-                        help="Number of simulations in remaining "
-                             "approximation rounds.",
-                        type=int,
-                        default=200)
-    parser.add_argument("-n_rounds",
-                        help="Number of approximation rounds. Needs to be '1' "
-                             "for non-sequential algorithms.",
-                        type=int,
-                        default=2)
-
-    parser.add_argument("-neural_estimator",
-                        help="Type of neural density estimator.",
-                        type=str,
-                        choices=['maf', 'nsf', 'mdn'],
-                        default='maf')
-    parser.add_argument("-n_transforms",
-                        help="Number of transforms for flow-based neural "
-                             "density estimators.",
-                        type=int,
-                        default=5)
-    parser.add_argument("-n_hidden",
-                        help="Number of features in hidden layers of neural "
-                             "density estimators.",
-                        type=int,
-                        default=50)
-    parser.add_argument("-z_score",
-                        help="How the observations are z-scored.",
-                        type=str,
-                        choices=['none', 'independent', 'structured'],
-                        default='independent')
-
-    parser.add_argument("-seed",
-                        help="Random seed for pytorch and numpy.",
-                        type=int)
-    parser.add_argument('--global_parameters',
-                        help="Use the same leak conductance in all "
-                             "compartments and the same conductance between "
-                             "compartments for all connections between "
-                             "compartments.",
-                        action='store_true')
     args = parser.parse_args()
+    with open(args.configuration, "r", encoding="utf-8") as handle:
+        config = yaml.safe_load(handle)
 
-    if args.seed is not None:
-        torch.manual_seed(args.seed)
-        np.random.seed(args.seed)
+    if config['seed'] is not None:
+        torch.manual_seed(config['seed'])
+        np.random.seed(config['seed'])
 
-    target_df = pd.read_pickle(args.target)
+    target_df = pd.read_pickle(config['target'])
 
-    n_simulations = [args.n_sim_first] + \
-        [args.n_sim_rest] * (args.n_rounds - 1)
+    n_simulations = [config['sbi']['n_sim_first']] + \
+        [config['sbi']['n_sim_rest']] * (config['sbi']['n_rounds'] - 1)
 
     # Density estimator network
-    density_nn = posterior_nn(model=args.neural_estimator,
-                              z_score_x=args.z_score,
-                              num_transforms=args.n_transforms,
-                              hidden_features=args.n_hidden)
+    density_nn = posterior_nn(model=config['nde']['model'],
+                              z_score_x=config['nde']['z_score'],
+                              num_transforms=config['nde']['n_transforms'],
+                              hidden_features=config['nde']['n_hidden'])
 
     df, approx_pos = main(target_df,
-                          Observation[args.observation.upper()],
-                          Algorithm[args.algorithm],
+                          Observation[config['observation'].upper()],
+                          Algorithm[config['sbi']['algorithm']],
                           simulations=n_simulations,
                           density_estimator=density_nn,
-                          global_parameters=args.global_parameters)
-    df.attrs['target_file'] = str(Path(args.target).resolve())
+                          global_parameters=config['global_parameters'])
+    df.attrs['target_file'] = str(Path(config['target']).resolve())
 
     df.to_pickle('sbi_samples.pkl')
     if len(approx_pos) > 0:
