@@ -9,7 +9,7 @@ import pandas as pd
 from model_hw_mc_attenuation import Observation
 from model_hw_mc_attenuation.extract import extract_observation
 
-from paramopt.abc.sbc import sbc_data
+from paramopt.sbi.sbc import sbc_data
 
 
 def extract_arrays(sbc_df: pd.DataFrame,

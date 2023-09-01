@@ -112,4 +112,4 @@ if __name__ == '__main__':
 
     figure = main(posterior_samples, Observation[args.observation.upper()],
                   args.labels)
-    figure.savefig('abc_marginals_obs.svg')
+    figure.savefig('sbi_marginals_obs.svg')

@@ -457,7 +457,7 @@ def extract_deviations_dataframe(results_folder: Path,
 
     The experiments are given by the indices. Each experiment should
     have a folder named after its index in `results_folder`. In this folder a
-    file `abc_samples.pkl` with samples drawn during the approximation and a
+    file `sbi_samples.pkl` with samples drawn during the approximation and a
     file `posterior_samples_{last_idx}.pkl` with samples drawn from the last
     approximated posterior (and amplitudes recorded with these parameters)
     should be located.
@@ -476,7 +476,7 @@ def extract_deviations_dataframe(results_folder: Path,
         for n_exp in exp_indices:
             folder = results_folder.joinpath(str(n_exp))
             n_last = pd.read_pickle(
-                folder.joinpath('abc_samples.pkl'))['round'].max()
+                folder.joinpath('sbi_samples.pkl'))['round'].max()
 
             samples = pd.read_pickle(folder.joinpath(
                 f'posterior_samples_{n_last}.pkl'))

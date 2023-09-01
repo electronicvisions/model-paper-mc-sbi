@@ -8,11 +8,11 @@ from model_hw_mc_attenuation import Observation
 from model_hw_mc_attenuation.scripts.record_variations import main as \
     record_variations
 
-from paper_sbi.scripts.attenuation_abc import main as abc
+from paper_sbi.scripts.attenuation_sbi import main as sbi
 
-from paramopt.abc import Algorithm
+from paramopt.sbi import Algorithm
 
-class TestABCBSS(unittest.TestCase):
+class TestSBIBSS(unittest.TestCase):
     '''
     Test the SNPE algorithm on BSS-2 and :class:`Observation.LENGTH_CONSTANT`
     as an observation.
@@ -30,7 +30,7 @@ class TestABCBSS(unittest.TestCase):
 
     def test_snpe(self):
         simulations = [50, 50]
-        samples, posteriors = abc(self.target_df,
+        samples, posteriors = sbi(self.target_df,
                                   self.observation,
                                   Algorithm.SNPE,
                                   simulations=simulations,

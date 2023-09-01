@@ -7,7 +7,7 @@ The repository is structured as follows:
 - `src/py/paper_sbi/scripts`: Experiment and visualization scripts.
 - `tests`: Hardware and software tests.
 
-To generate an approximated posterior the script `attenuation_abc.py` can be executed.
+To generate an approximated posterior the script `attenuation_sbi.py` can be executed.
 It takes experiment data from which a target observation can be extracted as an argument.
 Such experiment data can be recorded with `record_variations.py` which can be found in the repository `model-hw-mc-attenuation`.
 
@@ -32,14 +32,14 @@ When you want to perform experiments on BrainScaleS-2 you have to allocate hardw
     - execute `record_variations.py` (`record_variations_arbor.py` for arbor); these scripts are part of the repository `model-hw-mc-attenuation`,
     - the file `attenuation_variations.pkl` contains the experiment results.
 1. Approximation of the posterior:
-    - execute `attenuation_abc.py attenuation_variations.pkl -observation length_constant -n_sim_first 50 -n_sim_rest 50 -n_rounds 3 --global_parameters`,
-    - the file `abc_samples.pkl` contains the samples which were drawn while executing the SNPE algorithm,
+    - execute `attenuation_sbi.py attenuation_variations.pkl -observation length_constant -n_sim_first 50 -n_sim_rest 50 -n_rounds 3 --global_parameters`,
+    - the file `sbi_samples.pkl` contains the samples which were drawn while executing the SNPE algorithm,
     - the file `posteriors.pkl` contains the approximated posteriors of each round.
 1. Draw samples from the last approximated posterior:
-    - execute `abc_draw_posterior_samples.py posteriors.pkl abc_samples.pkl` (script is part of the repository `paramopt`),
+    - execute `sbi_draw_posterior_samples.py posteriors.pkl sbi_samples.pkl` (script is part of the repository `paramopt`),
     - the file `posterior_samples_2.pkl` contains samples drawn from the last posterior.
 1. Visualize the drawn posterior:
-    - execute `plot_abc_pairplot.py posterior_samples_2.pkl` (script is part of the repository `paramopt`),
+    - execute `plot_sbi_pairplot.py posterior_samples_2.pkl` (script is part of the repository `paramopt`),
     - the file `pairplot.png` contains a pairplot of the posterior samples (Figure 3D in [Kaiser et al. (2023)](#Kaiser2023simulation)).
 
 

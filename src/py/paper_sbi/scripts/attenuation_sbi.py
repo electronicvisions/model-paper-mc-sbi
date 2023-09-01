@@ -15,7 +15,7 @@ from model_hw_mc_attenuation import Observation, fit_length_constant, \
 from model_hw_mc_attenuation.extract import extract_observation, \
     get_experiment, get_bounds
 
-from paramopt.abc import Algorithm, perform_sequential_estimation, \
+from paramopt.sbi import Algorithm, perform_sequential_estimation, \
     perform_mcabc
 
 
@@ -58,12 +58,12 @@ def get_evaluation_function(experiment: AttenuationExperiment,
 def _get_epsilon(chain_length: int, observation: Observation,
                  target: np.ndarray) -> float:
     '''
-    Determine epsilon for rejection based ABC algorithms.
+    Determine epsilon for rejection based SBI algorithms.
 
     :param chain_length: Length of the chain with which the experiment is
         performed.
     :param observation: Type of observation extracted form the experiment.
-    :param target: Target observation used by the ABC algorithm.
+    :param target: Target observation used by the SBI algorithm.
     :returns: Function which executes an experiment and returns the given
         observation.
     '''
@@ -82,7 +82,7 @@ def _get_column_names(parameter_names: List[str],
                       chain_length: int) -> pd.MultiIndex:
     '''
     Determine the column names of the DataFrame with the samples drawn during
-    ABC.
+    SBI.
 
     :param parameter_names: Names of the parameters configured during the
         experiment.
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     import pickle
 
     parser = argparse.ArgumentParser(
-        description="Perform an ABC algorithm to approximate a posterior."
+        description="Perform an SBI algorithm to approximate a posterior."
                     "The posterior will be restricted to a given target "
                     "observation if several rounds of a sequential algorithm "
                     "are executed or a rejection based algorithm is used.")
@@ -283,7 +283,7 @@ if __name__ == '__main__':
                           global_parameters=args.global_parameters)
     df.attrs['target_file'] = str(Path(args.target).resolve())
 
-    df.to_pickle('abc_samples.pkl')
+    df.to_pickle('sbi_samples.pkl')
     if len(approx_pos) > 0:
         with open(r"posteriors.pkl", "wb") as output_file:
             pickle.dump(approx_pos, output_file)
