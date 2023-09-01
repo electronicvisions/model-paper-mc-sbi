@@ -73,28 +73,27 @@ def measure_time_constants(calib_routine: base.Calib,
     '''
 
     with hxcomm.ManagedConnection() as connection:
-        # Prepare chip for measurement
-        init_builder, _ = sta.ExperimentInit().generate()
-        base.run(connection, init_builder)
+        stateful_connection = base.StatefulConnection(connection)
 
         # Apply calibration (includes CADC calib)
-        builder = sta.PlaybackProgramBuilder()
+        builder = base.WriteRecordingPlaybackProgramBuilder()
         builder, _ = neuron_helpers.configure_chip(builder)
-        builder.merge_back(sta.convert_to_builder(calib_dumper))
-        base.run(connection, builder)
+        builder.builder.merge_back(sta.convert_to_builder(calib_dumper))
+        base.run(stateful_connection, builder)
 
-        calib_routine.prelude(connection)
+        calib_routine.prelude(stateful_connection)
 
         results = []
 
         for param in parameters:
-            builder = sta.PlaybackProgramBuilder()
+            builder = base.WriteRecordingPlaybackProgramBuilder()
 
             capmem, div, mul = conductance_to_capmem(param)
             enable_mul_div_func(builder, calib_routine.neuron_configs,
                                 div, mul)
 
             calib_routine.configure_parameters(builder, capmem)
-            results.append(calib_routine.measure_results(connection, builder))
+            results.append(
+                calib_routine.measure_results(stateful_connection, builder))
 
         return np.array(results)

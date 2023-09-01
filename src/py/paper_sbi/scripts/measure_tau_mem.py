@@ -8,7 +8,7 @@ import quantities as pq
 
 from pynn_brainscales.brainscales2.helper import nightly_calib_path
 
-from dlens_vx_v3 import sta, hal, halco
+from dlens_vx_v3 import hal, halco
 
 from model_hw_mc_attenuation.helper import get_license_and_chip
 from model_hw_mc_attenuation.bss import default_conductance_limits
@@ -17,9 +17,10 @@ from paper_sbi.helper import measure_time_constants, get_calibration_dumper, \
     extract_neuron_configs
 
 from calix.hagen.neuron_leak_bias import MembraneTimeConstCalibOffset
+from calix.common.base import WriteRecordingPlaybackProgramBuilder
 
 
-def enable_leak_div_mul(builder: sta.PlaybackProgramBuilder,
+def enable_leak_div_mul(builder: WriteRecordingPlaybackProgramBuilder,
                         configs: hal.NeuronConfig,
                         div: bool, mul: bool) -> None:
     '''
