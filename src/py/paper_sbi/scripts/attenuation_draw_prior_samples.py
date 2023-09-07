@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     limits = default_conductance_limits
     if args.length is not None:
-        limits = limits.repeat(args.length)[:-1]
+        limits = limits.repeat(args.length, axis=0)[:-1]
     prior = utils.BoxUniform(low=limits[:, 0].flatten(),
                              high=limits[:, 1].flatten())
 
