@@ -5,11 +5,12 @@ In this repository we collect all code which is needed to replicate the results 
 The repository is structured as follows:
 - `src/py/paper_sbi`: Python library.
 - `src/py/paper_sbi/scripts`: Experiment and visualization scripts.
+- `src/configurations`: YAML configuration files for experiments.
 - `tests`: Hardware and software tests.
 
 To generate an approximated posterior the script `attenuation_sbi.py` can be executed.
-It takes experiment data from which a target observation can be extracted as an argument.
-Such experiment data can be recorded with `record_variations.py` which can be found in the repository `model-hw-mc-attenuation`.
+It takes a YAML configuration file which defines experiment parameters such as target observation or hyperparameters of the neural density estimator, see `src/configurations/attenuation_sbi.yaml` for default values.
+A target observation can be recorded with `record_variations.py` which can be found in the repository `model-hw-mc-attenuation`.
 
 Further scripts for visualizing the posteriors or samples drawn from the posterior can be found in the repository `paramopt`.
 
@@ -19,7 +20,7 @@ Please contact us, if you want access.
 Without hardware access you can still execute the simulations in [Arbor](https://arbor-sim.org/).
 
 In the following example we will perform an experiment similar to Figure 3 in [Kaiser et al. (2023)](#Kaiser2023simulation).
-We will restrict the parameter space to two dimension and look at the decay constant as an observable.
+We will restrict the parameter space to two dimensions and look at the decay constant as an observable.
 Furthermore, we will perform three approximation rounds with 50 simulations in each round.
 In contrast to the publication, we use the default neural density estimator in the current example.
 
@@ -31,8 +32,9 @@ When you want to perform experiments on BrainScaleS-2 you have to allocate hardw
 1. Record a target:
     - execute `record_variations.py` (`record_variations_arbor.py` for arbor); these scripts are part of the repository `model-hw-mc-attenuation`,
     - the file `attenuation_variations.pkl` contains the experiment results.
+1. Take the base configuration `src/configurations/attenuation_sbi.yaml` and change `target` such that it points to the previously recorded target. Also change the number of simulations to `50` and the number of rounds to `3`. Save the file as `config.yaml`.
 1. Approximation of the posterior:
-    - execute `attenuation_sbi.py attenuation_variations.pkl -observation length_constant -n_sim_first 50 -n_sim_rest 50 -n_rounds 3 --global_parameters`,
+    - execute `attenuation_sbi.py config.yaml`,
     - the file `sbi_samples.pkl` contains the samples which were drawn while executing the SNPE algorithm,
     - the file `posteriors.pkl` contains the approximated posteriors of each round.
 1. Draw samples from the last approximated posterior:
@@ -41,7 +43,6 @@ When you want to perform experiments on BrainScaleS-2 you have to allocate hardw
 1. Visualize the drawn posterior:
     - execute `plot_sbi_pairplot.py posterior_samples_2.pkl` (script is part of the repository `paramopt`),
     - the file `pairplot.png` contains a pairplot of the posterior samples (Figure 3D in [Kaiser et al. (2023)](#Kaiser2023simulation)).
-
 
 ## How to build
 ### Build- and runtime dependencies
