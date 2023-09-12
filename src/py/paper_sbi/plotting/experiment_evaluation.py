@@ -31,7 +31,7 @@ def create_evaluation_plots(example_traces: Sequence[neo.Block],
     :param v_per_madc: Value of a single MADC bit in volts.
     :param grid_search_df: Results of a two-dimensional grid search.
     '''
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     width_double = get_figure_width('double')
 
     # Evaluation

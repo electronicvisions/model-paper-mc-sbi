@@ -38,7 +38,7 @@ def create_high_dim_plots(data_amp_first: DataSingleObservation,
     '''
     posterior_dfs = [data_amp_first.posterior_samples,
                      data_amp_all.posterior_samples]
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     double_width = get_figure_width('double')
     height = 2
 

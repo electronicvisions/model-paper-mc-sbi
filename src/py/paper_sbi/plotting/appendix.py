@@ -170,7 +170,7 @@ def create_appendix_plots(
     :param madc_slope: Characterization of the MADC. How much volt a single
         bit in an MADC measurement corresponds to.
     '''
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     figure_width = get_figure_width('single')
 
     # Amortized Posterior

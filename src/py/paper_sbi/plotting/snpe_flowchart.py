@@ -23,7 +23,7 @@ def create_icons(posterior,
     :param traces: Traces to plot. The first trace is used to illustrate
         the target trace.
     '''
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     figure_width = 0.6
     figure_height = 0.6
 

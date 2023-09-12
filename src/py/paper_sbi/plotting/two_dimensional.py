@@ -120,7 +120,7 @@ def create_two_dim_plots(*,
     :param v_per_madc: Characterization of the MADC. How much volt a single
         bit in an MADC measurement corresponds to.
     '''
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     figure_width = get_figure_width('double') / 3
     heights_2d = 2
     height_traces = 0.4

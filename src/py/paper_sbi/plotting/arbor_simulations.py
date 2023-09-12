@@ -46,7 +46,7 @@ def create_simulation_plots(*,
     :param original_parameters: Initial parameters used to record the
         observation on which the posteriors are conditioned.
     '''
-    fileformat = 'pgf' if latex_enabled() else 'svg'
+    fileformat = 'pdf' if latex_enabled() else 'svg'
     figure_width = get_figure_width('double') / 3
     heights_2d = 2
     height_traces = 0.4
