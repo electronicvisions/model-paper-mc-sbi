@@ -1,6 +1,6 @@
 # Simulation-based Inference for Model Parameterization on Analog Neuromorphic Hardware
 
-In this repository we collect all code which is needed to replicate the results in [Kaiser et al. (2023)](#Kaiser2023simulation).
+In this repository we collect all code which is needed to replicate the results in [Kaiser et al. (2023a)](#Kaiser2023simulation).
 
 The repository is structured as follows:
 - `src/py/paper_sbi`: Python library.
@@ -14,12 +14,16 @@ A target observation can be recorded with `record_variations.py` which can be fo
 
 Further scripts for visualizing the posteriors or samples drawn from the posterior can be found in the repository `paramopt`.
 
+## Create the plots presented in the publication
+The data which is presented in [Kaiser et al. (2023a)](#Kaiser2023simulation) can be downloaded from [Kaiser et al. (2023b)](#Kaiser2023simulation_data).
+Once the data has been extracted to a local folder `local_folder` the figures of the publication can be created with the script `plot_paper_results.py local_folder --plot_appendix`.
+
 ## Example: How to execute the SNPE algorithm and visualize posterior samples
 In order to perform emulations on the BrainScaleS-2 system, you need access to the cluster of the Electronic Vision(s) group.
 Please contact us, if you want access.
 Without hardware access you can still execute the simulations in [Arbor](https://arbor-sim.org/).
 
-In the following example we will perform an experiment similar to Figure 3 in [Kaiser et al. (2023)](#Kaiser2023simulation).
+In the following example we will perform an experiment similar to Figure 3 in [Kaiser et al. (2023a)](#Kaiser2023simulation).
 We will restrict the parameter space to two dimensions and look at the decay constant as an observable.
 Furthermore, we will perform three approximation rounds with 50 simulations in each round.
 In contrast to the publication, we use the default neural density estimator in the current example.
@@ -42,7 +46,7 @@ When you want to perform experiments on BrainScaleS-2 you have to allocate hardw
     - the file `posterior_samples_2.pkl` contains samples drawn from the last posterior.
 1. Visualize the drawn posterior:
     - execute `plot_sbi_pairplot.py posterior_samples_2.pkl` (script is part of the repository `paramopt`),
-    - the file `pairplot.png` contains a pairplot of the posterior samples (Figure 3D in [Kaiser et al. (2023)](#Kaiser2023simulation)).
+    - the file `pairplot.png` contains a pairplot of the posterior samples (Figure 3D in [Kaiser et al. (2023a)](#Kaiser2023simulation)).
 
 ## How to build
 ### Build- and runtime dependencies
@@ -145,6 +149,9 @@ USA
 ```
 
 ## References
-<a id="Kaiser2023simulation">Kaiser et al. (2023)</a> 
+<a id="Kaiser2023simulation">Kaiser et al. (2023a)</a>
 "Simulation-based Inference for Model Parameterization on Analog Neuromorphic Hardware"
 In: arXiv preprint. doi: [10.48550/arXiv.2303.16056](https://doi.org/10.48550/arXiv.2303.16056).
+<a id="Kaiser2023simulation_data">Kaiser et al. (2023b)</a>
+"Simulation-based Inference for Model Parameterization on Analog Neuromorphic Hardware [data]"
+Doi: [10.11588/data/AVFF2E](10.11588/data/AVFF2E).
