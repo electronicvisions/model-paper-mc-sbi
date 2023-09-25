@@ -19,9 +19,11 @@ from model_hw_mc_attenuation import Observation, exponential_decay, \
 from model_hw_mc_attenuation.bss import integration_bounds
 from model_hw_mc_attenuation.extract import extract_observation
 
+from paper_sbi.plotting.ppc import plot_ppc_amplitudes
+from paper_sbi.plotting.high_dimensional import _advance_style_cycle
 from paper_sbi.plotting.helper import latex_enabled, \
     formatted_parameter_names_bss, replace_latex, get_figure_width, \
-    DataSingleObservation
+    DataSingleObservation, add_legend_with_patches
 
 from paramopt.plotting.pairplot import pairplot, create_axes_grid
 from paramopt.plotting.posterior import plot_posterior, label_low_high
@@ -221,9 +223,11 @@ def create_appendix_plots(
     figure.savefig(f'pairplot_hd_amp_all.{fileformat}')
     plt.close()
 
+    # Prior predictive check vs posterior predictive check
     figure = plot_prior_predictive_check(
-        figsize=(get_figure_width("double"), 4),
-        prior_df=data_hd_amp_first.coverage_ensemble.prior_samples,
+        figsize=(get_figure_width("double"), 2.5),
+        amps_first_df=data_hd_amp_first,
+        amps_all_df=data_hd_amp_all,
         target_df=target_df)
     figure.savefig(f'prior_predictive_check.{fileformat}')
     plt.close()
@@ -477,14 +481,16 @@ def plot_pairplot(figsize: Tuple[float, float],
     pairplot(axes, samples_df['parameters'].values, labels=param_names,
              limits=samples_df.attrs['limits'],
              kwargs_1d={'c': 'C0'},
-             kwargs_2d={'max_points': 100, 's': 1, 'alpha': 0.5, 'c': 'C0'},
+             kwargs_2d={'max_points': 1000, 's': 1, 'alpha': 0.5, 'c': 'C0',
+                        'rasterized': True},
              target_params=target_params)
 
     return fig
 
 
 def plot_prior_predictive_check(figsize: Tuple[float, float],
-                                prior_df: pd.DataFrame,
+                                amps_first_df: pd.DataFrame,
+                                amps_all_df: pd.DataFrame,
                                 target_df: pd.DataFrame) -> plt.Figure:
     '''
     Plot the mean distance to the target observation for the observations
@@ -493,37 +499,47 @@ def plot_prior_predictive_check(figsize: Tuple[float, float],
     We use this plot to illustrate the results of a prior predictive check.
 
     :param figsize: Size of the figure (width, height).
-    :param posterior_dfs: Data Frame with prior samples and their recorded
-        amplitudes.
+    :param amps_first_df: Data Frame with samples from the experiment where
+        the amplitudes from input to the first compartment were used as a
+        target.
+    :param amps_all_df: Data Frame with samples from the experiment where
+        all amplitudes were used as a target.
     :param target_df: DataFrame from which the target observation can be
         extracted.
     :returns: Figure with the results of posterior predictive check.
     '''
-    length = prior_df.attrs['length']
+    length = amps_first_df.posterior_samples.attrs['length']
     fig, axs = plt.subplots(length, length, figsize=figsize,
                             sharex=True, sharey=True,
-                            gridspec_kw={'left': 0.1, 'right': 0.98,
-                                         'top': 0.99, 'bottom': 0.1,
-                                         'hspace': 0.1, 'wspace': 0.2})
-    # Extract_data
-    amplitudes = prior_df['amplitudes']
-    obs = extract_observation(amplitudes[~np.any(amplitudes.isna(), axis=1)],
-                              Observation.AMPLITUDES)
-    target = extract_observation(target_df, Observation.AMPLITUDES)
-    norm_data = (obs - target.mean(0)) / target.std(0)
+                            gridspec_kw={'left': 0.02, 'right': 0.8,
+                                         'top': 0.95, 'bottom': 0.17,
+                                         'hspace': 0.2, 'wspace': 0.2})
+    posterior_dfs = [amps_first_df.posterior_samples,
+                     amps_all_df.posterior_samples,
+                     amps_first_df.coverage_ensemble.prior_samples]
+    # For consistency with previous figures (2d parameter space), advance color
+    # cycle by one
+    for ax in axs.flatten():
+        _advance_style_cycle(ax)
 
-    for ax, data in zip(axs.flatten(), norm_data.T):
-        obs_mean = data.mean()
-        obs_std = data.std()
-        ax.axvspan(obs_mean - obs_std, obs_mean + obs_std, facecolor='k',
-                   alpha=0.2)
-        ax.axvline(obs_mean, c='k', ls=':')
-        ax.hist(data, bins=np.arange(-10, 11, 2))
-        ax.set_xlim(-10, 10)
+    plot_ppc_amplitudes(axs, posterior_dfs, target_df, x_lim=(-10, 10))
 
-    fig.supxlabel(r'Deviation from Target / $\sigma^*$', c='0.3', size=6)
-    fig.supylabel(r'Number of Samples', c='0.3', size=6)
+    for ax in axs[-1, :]:
+        ax.set_xticks([-10, -5, -0, 5, 10])
+    for ax in axs.flatten():
+        for sigma in [3, 5]:
+            ax.axvline(-sigma, color='k', alpha=0.3, lw=0.3, ls=':', zorder=0)
+            ax.axvline(sigma, color='k', alpha=0.3, lw=0.3, ls=':', zorder=0)
 
+    legend_labels = [r'Posterior (First comp. $\myvec{F}$)',
+                     r'Posterior (All comp. $\mymat{H}$)', r'Prior']
+    if not latex_enabled():
+        legend_labels = [replace_latex(label) for label in legend_labels]
+
+    colors = [patch.get_facecolor() for patch in axs[0, 0].patches]
+    add_legend_with_patches(fig, legend_labels, colors,
+                            title="Distribution",
+                            loc='center right')
     return fig
 
 

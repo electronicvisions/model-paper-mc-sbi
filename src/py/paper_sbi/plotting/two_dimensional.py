@@ -337,7 +337,7 @@ def _create_traces_figure(figsize: Tuple[float, float],
     '''
     fig = plt.figure(figsize=figsize)
     traces_grid = fig.add_gridspec(1, len(blocks), wspace=0.05,
-                                   left=0.03, right=0.89, bottom=0.35,
+                                   left=0.05, right=0.89, bottom=0.35,
                                    top=0.98)
     ax = None  # share axes later
     axes = []

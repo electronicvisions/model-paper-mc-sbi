@@ -10,13 +10,15 @@ from model_hw_mc_attenuation.extract import extract_observation
 
 def plot_ppc_result(axs: Union[plt.Axes, np.ndarray],
                     observations: Sequence[np.ndarray],
-                    target: pd.DataFrame) -> None:
+                    target: pd.DataFrame, **kwargs) -> None:
     '''
     Plot the result of a predictive posterior check (PPC).
 
     Plot the mean deviation from the target observation and the standard
     deviation of the given observations. The deviations are scaled by the
     standard deviations of the target observation.
+
+    Keyword arguments are passed to `plot_mean_and_std`.
 
     :param axs: Axes in which to plot the results. Need to have the same
         dimension as the observation.
@@ -29,17 +31,17 @@ def plot_ppc_result(axs: Union[plt.Axes, np.ndarray],
         norm_data.append((obs - target.mean(0)) / target.std(0))
 
     if target.ndim == 1:
-        plot_mean_and_std(axs, norm_data)
+        plot_mean_and_std(axs, norm_data, **kwargs)
         return
 
     # iterate over dimensions of observations
     for curr_n, ax in enumerate(axs.flatten()):
         curr_data = [data[:, curr_n] for data in norm_data]
-        plot_mean_and_std(ax, curr_data)
+        plot_mean_and_std(ax, curr_data, **kwargs)
 
 
 def plot_ppc_amplitudes(axs: np.ndarray, posterior_dfs: Sequence[pd.DataFrame],
-                        target_df: pd.DataFrame):
+                        target_df: pd.DataFrame, **kwargs):
     '''
     Plot the result of a predictive posterior check (PPC) where recorded
     amplitudes are compared.
@@ -47,6 +49,8 @@ def plot_ppc_amplitudes(axs: np.ndarray, posterior_dfs: Sequence[pd.DataFrame],
     Plot the mean deviation from the target amplitudes and the standard
     deviation of the given amplitudes in `posterior_dfs`. The deviations
     are scaled by the standard deviations of the target amplitudes.
+
+    Keyword arguments are passed to `plot_ppc_result`.
 
     :param axs: Axes in which to plot the results. Needs to have the same size
         as the number of recorded amplitudes. And is assumed to be arranged
@@ -63,7 +67,7 @@ def plot_ppc_amplitudes(axs: np.ndarray, posterior_dfs: Sequence[pd.DataFrame],
             Observation.AMPLITUDES))
     target = extract_observation(target_df, Observation.AMPLITUDES)
 
-    plot_ppc_result(axs, observations, target)
+    plot_ppc_result(axs, observations, target, **kwargs)
 
     # styling
     _add_observable_annotation(axs)

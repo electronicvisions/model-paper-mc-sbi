@@ -3,8 +3,8 @@ Illustrate the results of a grid search.
 '''
 from typing import Tuple, Sequence, Optional, Union
 
-import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from matplotlib import ticker
 import pandas as pd
 
@@ -87,16 +87,24 @@ def plot_grid_search_diff(figsize: Tuple[float, float],
                            gridspec_kw={'left': 0.2, 'right': 0.9,
                                         'top': 0.83, 'bottom': 0.19})
 
-    length_constants = create_obs_dataframe(data, Observation.LENGTH_CONSTANT)
-    difference = np.abs(length_constants - target_length_constant)
-    default_kwargs = {}
+    data = create_obs_dataframe(data, Observation.LENGTH_CONSTANT)
+    data['length_constant'] -= target_length_constant
+    data['length_constant'] = data['length_constant'].abs()
+
+    default_kwargs = {
+        'cmap': 'cividis_r',
+        'norm': colors.LogNorm(vmin=data.values[:, -1].min(),
+                               vmax=data.values[:, -1].max())}
     default_kwargs.update(**kwargs)
-    im_plot = plot_heat_map(ax, difference, **default_kwargs)
+    im_plot = plot_heat_map(ax, data, **default_kwargs)
 
     color_bar = ax.figure.colorbar(im_plot, ax=ax)
     color_bar.set_label(r'Difference to Target $\tau - \tau^*$ / comp')
+    color_bar.ax.tick_params(rotation=90)
+    for tick in color_bar.ax.yaxis.get_majorticklabels():
+        tick.set_verticalalignment("center")
 
-    contour = plot_contour_lines(ax, difference, smooth_sigma=3,
+    contour = plot_contour_lines(ax, data, smooth_sigma=3,
                                  levels=levels)
     ax.clabel(contour, inline=True)
 

@@ -276,20 +276,21 @@ def replace_latex(strings: Union[str, Sequence[str]]
     return [replace_latex(string) for string in strings]
 
 
-def add_legend_with_patches(ax: plt.Axes, labels: List[str], colors: List,
+def add_legend_with_patches(parent: Union[plt.Axes, plt.Figure],
+                            labels: List[str], colors: List,
                             **kwargs) -> None:
     '''
-    Add a legend with patches of the given colors to the given axes.
+    Add a legend with patches of the given colors to the given axes/figure.
 
     Keyword arguments are passed to :meth:`plt.Axes.legend`.
 
-    :param ax: Axes to which the legend is added.
+    :param parent: Axes/figure to which the legend is added.
     :param labels: Labels for the entries in the legend.
     :param colors: Colors of the patches.
     '''
     legend_elements = [Patch(facecolor=color, ec='none', label=label)
                        for color, label in zip(colors, labels)]
-    ax.legend(handles=legend_elements, **kwargs)
+    parent.legend(handles=legend_elements, **kwargs)
 
 
 def mark_points(ax: plt.Axes, points: Sequence[Parameter]) -> None:
