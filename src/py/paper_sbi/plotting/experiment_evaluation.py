@@ -120,7 +120,7 @@ def plot_psp_evaluation(figsize: Tuple[float, float],
 
     add_scalebar(ax,
                  x_label=r'$\SI{20}{\us}$' if latex_enabled() else '20us',
-                 y_label=r'$\SI{0.4}{\V}$' if latex_enabled() else '0.4V',
+                 y_label=r'$\SI{0.5}{\V}$' if latex_enabled() else '0.5V',
                  args_xlabel=font_style,
                  args_ylabel=font_style,
                  args_scale={'c': '0.3'},
