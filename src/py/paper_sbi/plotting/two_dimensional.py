@@ -250,7 +250,8 @@ def plot_posterior_samples(figsize: Tuple[float, float], *,
                  labels=param_names,
                  plot_2d_dist=plot_2d_scatter,
                  limits=samples.attrs['limits'],
-                 kwargs_2d={'s': 3, 'alpha': 0.3, 'ec': 'none'},
+                 kwargs_2d={'s': 3, 'alpha': 0.3, 'ec': 'none',
+                            'rasterized': True},
                  target_params=original_parameters)
 
     mark_points(axs[1, 0], marker_points)

@@ -318,7 +318,7 @@ def plot_amortized_samples(figsize: Tuple[float, float],
                                    x=target_obs).numpy().reshape(n_samples, -1)
 
         plot_2d_scatter(ax, samples[:, 0], samples[:, 1], c='C1', s=3,
-                        alpha=0.3, ec='none')
+                        alpha=0.3, ec='none', rasterized='True')
 
         target_params = target_df.attrs['parameters']
         ax.scatter(target_params[0], target_params[-1], fc='k', marker='X',
